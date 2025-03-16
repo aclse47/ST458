@@ -2,8 +2,7 @@
 # We compute 2-week (10-day) return. If it is positive, we go long on the stock
 # If it is negative, we go short on the stock. We rebalance positions so that 
 # total position is at most the current wealth each day
-
-library(putils) 
+library(putils)
 num_symbols <- 100
 lookback <- 10 # Compute momentum using past 10 day return
 
