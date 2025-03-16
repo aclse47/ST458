@@ -20,3 +20,4 @@ df <- df %>% arrange(symbol, date)                # Order according to symbol th
 tickers <- unique(df$symbol)
 
 df_with_features <- add_features(df)
+head(df_with_features)
