@@ -86,10 +86,39 @@ add_avg_true_range_vol<- function(df, window_size){
 # Momentum related features
 #-------------------------------------
 
-# TODO: Relative Strength Index
+# Relative Strength Index (RSI)
+add_relative_strength_index <- function(df, window_size){
+  df_with_rsi <- df %>%
+    group_by(symbol) %>%
+    arrange(date) %>%
+    mutate(!!paste0("relative_strength_index_window_size_", window_size) := TTR::RSI(close, n=window_size)) %>%
+    ungroup() %>%
+    arrange(symbol, date)
+  return(df_with_rsi)
+}
+
+# Moving Average Convergence Divergence (MACD)
+add_moving_average_convergence_divergence <- function(df, window_size_fast, window_size_slow, window_size_signal){
+  df_with_macd <- df %>%
+    group_by(symbol) %>%
+    arrange(date) %>%
+    mutate(!!paste0("macd_macd_line_fast_slow_signal_", window_size_fast, "_", window_size_slow, "_", window_size_signal) := TTR::MACD(close, nFast = window_size_fast, nSlow = window_size_slow, nSig = window_size_signal, maType = EMA)[, 'macd']) %>%
+    mutate(!!paste0("macd_signal_line_fast_slow_signal_", window_size_fast, "_", window_size_slow, "_", window_size_signal) := TTR::MACD(close, nFast = window_size_fast, nSlow = window_size_slow, nSig = window_size_signal, maType = EMA)[, 'signal']) %>%
+    ungroup() %>%
+    arrange(symbol, date)
+  return(df_with_macd)
+}
 
 
-
+# Rate of Change (ROC)
+add_rate_of_change <- function(df, window_size){
+   df_with_roc <- df %>%
+    group_by(symbol) %>%
+    arrange(date) %>%
+    mutate(!!paste0("rate_of_change_window_size_", window_size) := TTR::ROC(close, n=window_size, type = 'discrete')) %>%
+    ungroup() %>%
+    arrange(symbol, date)
+}
 
 
 ##########################################################################################
@@ -130,6 +159,11 @@ add_features <- function(df,
                          rolling_std_log_returns_window_size=20, 
                          exp_weighted_moving_avg_vol_window_size=20, 
                          average_true_range_window_size=14,
+                         relative_strength_index_window_size=14,
+                         moving_average_convergence_divergence_window_size_fast=12,
+                         moving_average_convergence_divergence_window_size_slow=26,
+                         moving_average_convergence_divergence_window_size_signal=9,
+                         rate_of_change_window_size=14,
                          prediction_period_1=1,
                          prediction_period_2=5,
                          prediction_period_3=21){
@@ -142,7 +176,11 @@ add_features <- function(df,
     add_exp_weighted_moving_avg_vol(exp_weighted_moving_avg_vol_window_size) %>%
     add_avg_true_range_vol(average_true_range_window_size) %>%
     # TODO: Add momentum measures
-    
+    add_relative_strength_index(relative_strength_index_window_size) %>%
+    add_moving_average_convergence_divergence(moving_average_convergence_divergence_window_size_fast,
+                                              moving_average_convergence_divergence_window_size_slow,
+                                              moving_average_convergence_divergence_window_size_signal) %>%
+    add_rate_of_change(rate_of_change_window_size) %>%
     # TODO: Add trend-based measures
     
     # Add targets 
