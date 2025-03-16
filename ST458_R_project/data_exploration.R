@@ -8,10 +8,12 @@ library(reshape2)
 library(quantmod)
 library(zoo)
 library(ggplot2)
-
+library(tidyr)
+source('feature_engineering_functions.R')
 df <- read.csv('df_train.csv')
 df$date <- as.Date(df$date, format = "%d/%m/%Y")
 df <- df %>% arrange(symbol, date)
+df_with_features <- add_features(df)
 
 tickers <- unique(df$symbol)
 
@@ -45,7 +47,31 @@ for (t in seq(1, length(tickers), by = batch_size)){
 }
 
 
+# Plotting a single price ticker and all of it's features in a single plot.
+plot_single_with_features <- function(df_with_features, symbol_){
+  df_filtered <- df_with_features %>%
+    filter(symbol == symbol_) %>%
+    # select(date, close, where(~!grepl("fwd", colnames(df_with_features))))
+    select(date, close, !contains("fwd"))
+  print(nrow(df_with_features))
+  print(nrow(df_filtered))
+  
+  # As an example, choosing to plot ROC with XBRQ Symbol
+  df_long <- df_filtered %>%
+   select(c(date, close, rate_of_change_window_size_14)) %>%
+   pivot_longer(cols = -date, names_to = "feature", values_to = "value")
+  
+  
+  p <- ggplot(df_long, aes(x = date, y = value, color = feature)) +
+    geom_line()+
+    theme_minimal()
+  print(p)
+  
+  return(df_long)
+}
 
+
+df_long <- plot_single_with_features(df_with_features, "XBRQ")
 
 
 
