@@ -166,7 +166,9 @@ add_features <- function(df,
                          rate_of_change_window_size=14,
                          prediction_period_1=1,
                          prediction_period_2=5,
-                         prediction_period_3=21){
+                         prediction_period_3=21,
+                         prediction_period_4=63,
+                         prediction_period_5=126){
   df_with_features <- df %>% 
     # Add simple returns
     add_simple_returns_col() %>% 
@@ -175,7 +177,7 @@ add_features <- function(df,
     add_rolling_std_log_returns(rolling_std_log_returns_window_size) %>% 
     add_exp_weighted_moving_avg_vol(exp_weighted_moving_avg_vol_window_size) %>%
     add_avg_true_range_vol(average_true_range_window_size) %>%
-    # TODO: Add momentum measures
+    # Add momentum measures
     add_relative_strength_index(relative_strength_index_window_size) %>%
     add_moving_average_convergence_divergence(moving_average_convergence_divergence_window_size_fast,
                                               moving_average_convergence_divergence_window_size_slow,
@@ -190,5 +192,9 @@ add_features <- function(df,
     add_future_log_return(prediction_period_2) %>%
     add_future_simple_return(prediction_period_3) %>%
     add_future_log_return(prediction_period_3) %>%
+    add_future_simple_return(prediction_period_4) %>%
+    add_future_log_return(prediction_period_4) %>%
+    add_future_simple_return(prediction_period_5) %>%
+    add_future_log_return(prediction_period_5)
   return(df_with_features)    
 }
