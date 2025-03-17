@@ -11,7 +11,7 @@ library(ggplot2)
 library(tidyr)
 source('feature_engineering_functions.R')
 df <- read.csv('df_train.csv')
-df$date <- as.Date(df$date, format = "%d/%m/%Y")
+df$date <- as.Date(df$date, format = "%Y-%m-%d")
 df <- df %>% arrange(symbol, date)
 df_with_features <- add_features(df)
 
@@ -71,7 +71,7 @@ plot_single_with_features <- function(df_with_features, symbol_){
 }
 
 
-df_long <- plot_single_with_features(df_with_features, "XTG")
+df_long <- plot_single_with_features(df_with_features, "XPT")
 
 
 
