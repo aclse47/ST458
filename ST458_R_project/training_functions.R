@@ -152,8 +152,7 @@ hyperparameter_grid_training_lgbm <- function(df_with_features, hyper_parameter_
     
     response_var <- sprintf("simple_returns_fwd_day_%01d", training_log$lookahead[i])
     
-    na_idx <- is.na(df_with_features[[response_var]])
-    df_with_features <- df_with_features[!is.na(df_with_features[[response_var]]), ]
+    #df_with_features <- df_with_features[!is.na(df_with_features[[response_var]]), ]
     
     splits <- time_series_split(df_with_features$date, train_length = train_length, valid_length = valid_length, lookahead = lookahead)
     

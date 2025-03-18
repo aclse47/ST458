@@ -52,7 +52,7 @@ head(sort_data_frame(training_log, 'ic', decreasing=T))
 
 
 ################################################################################
-# Evaluation
+# Evaluation of LGBM with some plots
 ################################################################################
 
 lgbm_features_effects_plot(df_with_features_train, covariate_vars, training_log[1, ])
@@ -61,5 +61,19 @@ dev.off()
 
 
 
-all_dates <- sort(unique(df$date))
+
+
+################################################################################
+# Back-testing a trading algorithm on the validation set.
+################################################################################
+
+y_preds <- lgbm_get_validation_set_predictions(df_with_features, df_with_features_test, covariate_vars, categorical_vars, training_log[1, ])
+combined_position <- lgbm_get_positions_based_on_predictions(df_with_features, df_with_features_test, y_preds)
+wealth_and_pnl <- get_pnl_based_on_position(df_with_features, df_with_features_test, combined_position)
+performance_evaluation_of_wealth(wealth_and_pnl$wealth, wealth_and_pnl$daily_pnl, 0.03)
+
+
+
+
+
 
