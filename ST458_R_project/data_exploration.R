@@ -71,7 +71,7 @@ plot_single_with_features <- function(df_with_features, symbol_){
 }
 
 
-df_long <- plot_single_with_features(df_with_features, "XPT")
+df_long <- plot_single_with_features(df_with_features, "WSM")
 
 
 
