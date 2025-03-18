@@ -14,7 +14,7 @@ source('feature_engineering_functions.R')
 
 
 df <- read.csv('df_train.csv')                    # Read in csv
-df$date <- as.Date(df$date, format = "%d/%m/%Y")  # Make the date column date instead of char
+df$date <- as.Date(df$date, format = "%Y-%m-%d")  # Make the date column date instead of char
 df <- df %>% arrange(symbol, date)                # Order according to symbol then date like in case study lecture
 
 tickers <- unique(df$symbol)
