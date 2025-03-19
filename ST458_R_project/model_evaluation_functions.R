@@ -138,7 +138,7 @@ lgbm_get_positions_based_on_predictions <- function(df_all, df_test, y_preds, hy
 
 
 
-
+# This is independent kelly. Not based on lecture notes.
 lgbm_get_positions_based_on_kelly <- function(df_all, df_test, y_preds, hyperparameters){
   bunch(train_length, valid_length, lookahead) %=% hyperparameters[1:3]
   
