@@ -34,8 +34,8 @@ covariate_vars <- setdiff(colnames(df_with_features), c(response_vars, 'date', '
 categorical_vars <- c()
 
 
-df_with_features_train <- df_with_features[df_with_features$date < as.Date('2013-06-01'), ]
-df_with_features_test <- df_with_features[df_with_features$date >= as.Date('2013-06-01'), ]
+df_with_features_train <- df_with_features[df_with_features$date < as.Date('2013-01-01'), ]
+df_with_features_test <- df_with_features[df_with_features$date >= as.Date('2013-01-01'), ]
 
 # Hyper-parameter combination grid
 param_df <- expand.grid(
@@ -77,7 +77,10 @@ y_preds <- lgbm_get_validation_set_predictions(df_with_features, df_with_feature
 # This implements Kelly Criterion
 combined_position_kelly <- lgbm_get_positions_based_on_kelly(df_with_features, df_with_features_test, y_preds, hyperparameters)
 
-wealth_and_pnl <- get_pnl_based_on_position(df_with_features, df_with_features_test, combined_position_kelly)
+
+combined_position_min_var <- lgbm_get_positions_based_on_wmv(df_with_features, df_with_features_test, y_preds, hyperparameters)
+
+wealth_and_pnl <- get_pnl_based_on_position(df_with_features, df_with_features_test, combined_position_min_var)
 performance_evaluation_of_wealth(wealth_and_pnl$wealth, wealth_and_pnl$daily_pnl, 0.03)
 
 

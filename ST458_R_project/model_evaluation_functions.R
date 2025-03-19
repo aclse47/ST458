@@ -136,7 +136,49 @@ lgbm_get_positions_based_on_predictions <- function(df_all, df_test, y_preds, hy
 }
 
 
-
+lgbm_get_positions_based_on_wmv <- function(df_all, df_test, y_preds, hyperparameters){
+  bunch(train_length, valid_length, lookahead) %=% hyperparameters[1:3]
+  
+  all_dates <- sort(unique(df_all$date))
+  test_dates <- sort(unique(df_test$date))
+  
+  r1fwd_test <- reshape2::dcast(df_test, date ~ symbol, value.var = 'simple_returns_fwd_day_1')
+  row.names(r1fwd_test) <- r1fwd_test$date
+  r1fwd_test <- as.matrix(r1fwd_test[, -1])
+  position <- matrix(0, nrow(r1fwd_test), ncol(r1fwd_test), dimnames = dimnames(r1fwd_test))
+  
+  r1fwd <- reshape2::dcast(df_all, date ~ symbol, value.var = 'simple_returns_fwd_day_1')
+  row.names(r1fwd) <- r1fwd$date
+  r1fwd <- as.matrix(r1fwd[, -1])
+  
+  lookback_window <- 504 
+  n_assets <- ncol(r1fwd)
+  
+  for (i in 1:nrow(y_preds)){
+    current_date <- test_dates[i]
+    daily_preds <- y_preds[i, ]
+    current_idx <- which(all_dates == current_date)
+    hist_dates <- all_dates[max(1, (current_idx-(lookahead)) - lookback_window):(current_idx-(lookahead+1))]
+    
+    lookback_returns <- r1fwd[row.names(r1fwd) %in% hist_dates, , drop=F]
+    # cat(current_date, "=", rownames(lookback_returns)[1], " ", tail(rownames(lookback_returns), 1), "\n")
+    cov_matrix <- cov(lookback_returns, use = "pairwise.complete.obs")
+    
+    min_var_weights <- solve(cov_matrix) %*% rep(1, n_assets)
+    min_var_weights <- min_var_weights / sum(min_var_weights)
+    position[i, ] <- min_var_weights
+  }
+  
+  combined_position <- position
+  for (i in 1:nrow(position)){
+    j = max(1, i- (lookahead - 1))
+    combined_position[i,] <- colSums(position[j:i, , drop=FALSE])
+  }
+  
+  cat("Max absolute exposure for 1 wealth:", max(rowSums(abs(combined_position))) ,"\n")
+  
+  return(position)
+}
 
 # This is independent kelly. Not based on lecture notes.
 lgbm_get_positions_based_on_kelly <- function(df_all, df_test, y_preds, hyperparameters){
@@ -154,8 +196,6 @@ lgbm_get_positions_based_on_kelly <- function(df_all, df_test, y_preds, hyperpar
   row.names(r1fwd) <- r1fwd$date
   r1fwd <- as.matrix(r1fwd[, -1])
   
-  
-  position <- matrix(0, nrow(r1fwd_test), ncol(r1fwd_test), dimnames = dimnames(r1fwd_test))
   lookback_window = 60
   
   for (i in 1:nrow(y_preds)){
