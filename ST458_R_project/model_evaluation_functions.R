@@ -76,6 +76,8 @@ lgbm_get_validation_set_predictions <- function(df_all, df_test, covariate_vars,
       date_idx_end <- date_idx - lookahead
       date_idx_start <- date_idx_end - train_length + 1
       
+      
+      # date_range is in unix epoch
       date_range <- all_dates[date_idx_start:date_idx_end]
       train_filter <- df_all$date %in% date_range
       
@@ -87,8 +89,8 @@ lgbm_get_validation_set_predictions <- function(df_all, df_test, covariate_vars,
       model <- lgb.train(params = lgbm_params, data = dtrain, verbose=-1)
     }
     
-    
     test_filter <- df_all$date %in% date
+    
     
     preds <- predict(model, as.matrix(df_all[test_filter, covariate_vars]))
     y_pred[date, df_all$symbol[test_filter]] <- preds
@@ -98,8 +100,15 @@ lgbm_get_validation_set_predictions <- function(df_all, df_test, covariate_vars,
   return(y_pred)
 }
 
-# Implements a basic strategy of top 5 buy, bottom 5 sell equal amounts
-lgbm_get_positions_based_on_predictions <- function(df_all, df_test, y_preds){
+
+
+
+
+# Implements a basic strategy of top 5 buy, bottom 5 sell equal amounts.
+# Results in positions across assets along the time frame.
+lgbm_get_positions_based_on_predictions <- function(df_all, df_test, y_preds, hyperparameters){
+  bunch(train_length, valid_length, lookahead) %=% hyperparameters[1:3]
+  
   all_dates <- sort(unique(df_all$date))
   
   r1fwd <-  reshape2::dcast(df_test, date ~ symbol, value.var = 'simple_returns_fwd_day_1')
@@ -109,26 +118,29 @@ lgbm_get_positions_based_on_predictions <- function(df_all, df_test, y_preds){
   
   for (i in 1: (nrow(y_preds))){
     is_short <- rank(y_preds[i, ]) <= 5
-    is_long <- rank(y_preds[i, ]) > 45
+    is_long <- rank(y_preds[i, ]) > 95
     position[i, ] <- 0
     position[i, is_short] <- -1/200
     position[i, is_long] <- 1/200
   }
   
-  
   combined_position <- position
   for (i in 1:nrow(position)){
-    j = max(1, i-20)
+    j = max(1, i- (lookahead - 1))
     combined_position[i,] <- colSums(position[j:i, , drop=FALSE])
   }
   
-  print(max(rowSums(abs(combined_position))))
+  cat("Max absolute exposure for 1 wealth:", max(rowSums(abs(combined_position))) ,"\n")
   
   return(combined_position)
 }
 
 
 
+
+
+# We input the positions taken on each day
+# We output the PnL of the strategy and the wealth if we had invested $1 the beginning.
 get_pnl_based_on_position <- function(df_all, df_test, combined_position){
   all_dates <- sort(unique(df_all$date))
   
@@ -136,14 +148,23 @@ get_pnl_based_on_position <- function(df_all, df_test, combined_position){
   row.names(r1fwd) <- r1fwd$date
   r1fwd <- as.matrix(r1fwd[, -1])
   
+  # daily PnL in log returns - allows us to cumulative sum to get returns over periods of time.
   daily_pnl <- log(1 + rowSums(r1fwd * combined_position))
   daily_pnl <- xts(daily_pnl, order.by=as.Date(rownames(combined_position)))
+  # We lag because the PnL is realised at the end of the next day
+  # We assume trades are executed right before close of each day
+  #   This implies at the end of first day, we should have PnL of 0
   daily_pnl <- lag(daily_pnl)
   daily_pnl[1] <- 0
   
+  # Cumulative summing to get returns relative to first day on each day
   wealth <- exp(cumsum(daily_pnl)) / 1
-  return(list(wealth = wealth, daily_pnl = daily_pnl)) 
+  return(list(wealth = wealth, daily_pnl = daily_pnl))
 }
+
+
+
+
 
 
 performance_evaluation_of_wealth <- function(wealth, daily_pnl, risk_free_rate){
@@ -153,23 +174,14 @@ performance_evaluation_of_wealth <- function(wealth, daily_pnl, risk_free_rate){
   SPY_price <- SPY$SPY.Adjusted
   SPY_scaled <- SPY_price / as.numeric(SPY_price[1]) * 100
   
-  plot(cbind(wealth_scaled, SPY_scaled), legend.loc='topleft')
-  
+  p <- plot(cbind(wealth_scaled, SPY_scaled), legend.loc='topleft')
+  print(p)
   SPY_ret <- diff(log(SPY_price))
   SPY_ret[1] <- 0
   
   sharpe_ratio <- mean(daily_pnl - risk_free_rate / 252) / sd(daily_pnl) * sqrt(252)
   
-  
-  print((daily_pnl))
-  print((SPY_ret))
-  
-  correlation_of_returns <- cor(daily_pnl, SPY_ret, use = "complete.obs")
-  
-  cat("Coefficients\n")
-  print(coef(lm(daily_pnl ~ SPY_ret)))
   cat("Sharpe Ratio: ", sharpe_ratio, "\n")
-  cat("Correlation of Returns: ", correlation_of_returns, "\n")
 }
 
 

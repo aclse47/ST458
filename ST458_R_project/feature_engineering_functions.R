@@ -9,6 +9,7 @@ library(quantmod)
 library(zoo)
 library(ggplot2)
 library(TTR)
+library(dlm)
 
 
 
@@ -138,6 +139,30 @@ add_bollinger_bands <- function(df, window_size, std){
   return(df_with_bb)
 }
 
+# Moving Averages - SMA and EMA
+add_moving_averages <- function(df, window_size_normal, window_size_exponential){
+  df_with_sma_ema <- df %>%
+    group_by(symbol) %>%
+    arrange(date) %>%
+    mutate(!!paste0("moving_average_window_size_", window_size_normal) := SMA(close, n = window_size_normal)) %>%
+    mutate(!!paste0("exponential_moving_average_window_size_", window_size_exponential) := EMA(close, n = window_size_exponential)) %>%
+    ungroup() %>%
+    arrange(symbol, date)
+  return(df_with_sma_ema)
+}
+
+
+add_kalman_filtered_data <- function(df, dV_kalman, dW_kalman){
+  kalman_model <- dlmModPoly(order = 1, dV=dV_kalman,  dW=dW_kalman)
+  df_with_kf_close <- df %>%
+    group_by(symbol) %>%
+    arrange(date) %>%
+    mutate(!!paste0("kalman_filtered_close_dV_", dV_kalman, "_dW_", dW_kalman) :=  dlmFilter(close, kalman_model)$m[-1]) %>%
+    ungroup() %>%
+    arrange(symbol, date)
+  return(df_with_kf_close)
+}
+
 ##########################################################################################
 # FUNCTIONS TO ADD TARGETS
 ##########################################################################################
@@ -149,7 +174,7 @@ add_future_simple_return <- function(df_with_simple_returns, periods_ahead){
   df_with_future_simple_returns <- df_with_simple_returns %>%
    group_by(symbol) %>%
    arrange(date) %>%
-   mutate(!!paste0("simple_returns_fwd_day_", periods_ahead) := lead(simple_returns, n=periods_ahead)) %>%
+   mutate(!!paste0("simple_returns_fwd_day_", periods_ahead) := ((lead(close, n = periods_ahead) / close) - 1)) %>%
    ungroup() %>%
    arrange(symbol, date)
   return(df_with_future_simple_returns)
@@ -159,7 +184,7 @@ add_future_log_return <- function(df_with_log_returns, periods_ahead){
   df_with_future_log_returns <- df_with_log_returns %>%
    group_by(symbol) %>%
    arrange(date) %>%
-   mutate(!!paste0("log_returns_fwd_day_", periods_ahead) := lead(log_returns, n=periods_ahead)) %>%
+   mutate(!!paste0("log_returns_fwd_day_", periods_ahead) := log(lead(close, n=periods_ahead) / close)) %>%
    ungroup() %>%
    arrange(symbol, date)
   return(df_with_future_log_returns)
@@ -183,6 +208,10 @@ add_features <- function(df,
                          rate_of_change_window_size=14,
                          bb_window_size=20,
                          bb_std=2,
+                         sma_window_size = 20,
+                         ema_window_size = 20,
+                         dV_kalman = 7,
+                         dW_kalman = 0.01,
                          prediction_period_1=1,
                          prediction_period_2=5,
                          prediction_period_3=21,
@@ -202,8 +231,10 @@ add_features <- function(df,
                                               moving_average_convergence_divergence_window_size_slow,
                                               moving_average_convergence_divergence_window_size_signal) %>%
     add_rate_of_change(rate_of_change_window_size) %>%
-    # TODO: Add trend-based measures
+    # Add trend-based measures
     add_bollinger_bands(bb_window_size, bb_std) %>%
+    add_moving_averages(sma_window_size, ema_window_size) %>%
+    add_kalman_filtered_data(dV_kalman, dW_kalman) %>%
     # Add targets 
     add_future_simple_return(prediction_period_1) %>%
     add_future_log_return(prediction_period_1) %>%

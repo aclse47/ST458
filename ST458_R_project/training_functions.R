@@ -107,13 +107,9 @@ n_fold_training_lgbm <- function(df_with_features,
     
     
     model <- lgb.train(params = lgbm_params, data = dtrain, verbose = -1)
-    
-    
     y_pred <- predict(model, as.matrix(df_with_features[valid_idx, covariate_var]))
     y_pred <- unname(y_pred)
     y_true <- df_with_features[valid_idx, response_var]
-    
-    
     ic_in_fold <- compute_ic(df_with_features[valid_idx,'date'], y_true, y_pred)
     ic_by_day <- c(ic_by_day, ic_in_fold)
     
