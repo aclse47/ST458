@@ -101,38 +101,15 @@ n_fold_training_lgbm <- function(df_with_features,
   for (fold in 1: nfolds){
     bunch(train_idx, valid_idx) %=% splits[[fold]]
     
-    
-    # label_vector <- df_with_features[valid_idx, response_var]
-    # if (!is.numeric(label_vector)) {
-    #   stop("The label must be a numeric vector")
-    # }
-    
     dtrain <- lgb.Dataset(data = as.matrix(df_with_features[train_idx, covariate_var]),
                           label = df_with_features[train_idx, response_var],
                           categorical_feature = as.character(categorical_var))
     
     
-    
     model <- lgb.train(params = lgbm_params, data = dtrain, verbose = -1)
-    
-    
-    
-    # cat(train_idx[1], " ", train_idx[length(train_idx)], '\n')
-    # cat(valid_idx[1], " ", valid_idx[length(valid_idx)], '\n')
-    # print(head(df_with_features[valid_idx, response_var]))
-    # print(tail(df_with_features[valid_idx, response_var]))
-    
     y_pred <- predict(model, as.matrix(df_with_features[valid_idx, covariate_var]))
     y_pred <- unname(y_pred)
     y_true <- df_with_features[valid_idx, response_var]
-    
-    
-    # cat('\nhi\n', str(y_pred), '\nhi\n', str(y_true), '\nhi\n')
-    #print(tail(y_pred, 10))
-    #print(tail(y_true, 10))
-    #print('------------------------------------------------------')
-    # cat('\n')
-    
     ic_in_fold <- compute_ic(df_with_features[valid_idx,'date'], y_true, y_pred)
     ic_by_day <- c(ic_by_day, ic_in_fold)
     
@@ -147,7 +124,6 @@ n_fold_training_lgbm <- function(df_with_features,
 
 
 # Conducts training for all params in a hyper-parameter grid
-
 hyperparameter_grid_training_lgbm <- function(df_with_features, hyper_parameter_grid, num_param_comb, covariate_var, categorical_var){
   
   set.seed(458)
@@ -156,7 +132,6 @@ hyperparameter_grid_training_lgbm <- function(df_with_features, hyper_parameter_
   
   
   for (i in 1:num_param_comb){
-    # print(training_log[i, ])
     bunch(train_length, valid_length, lookahead, num_leaves,
           min_data_in_leaf, learning_rate, feature_fraction,
           bagging_fraction, num_iterations) %=% training_log[i, 1:9]
@@ -173,8 +148,7 @@ hyperparameter_grid_training_lgbm <- function(df_with_features, hyper_parameter_
     
     response_var <- sprintf("simple_returns_fwd_day_%01d", training_log$lookahead[i])
     
-    na_idx <- is.na(df_with_features[[response_var]])
-    df_with_features <- df_with_features[!is.na(df_with_features[[response_var]]), ]
+    #df_with_features <- df_with_features[!is.na(df_with_features[[response_var]]), ]
     
     splits <- time_series_split(df_with_features$date, train_length = train_length, valid_length = valid_length, lookahead = lookahead)
     

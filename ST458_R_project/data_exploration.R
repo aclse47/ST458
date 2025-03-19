@@ -7,6 +7,7 @@ library(lightgbm)
 library(reshape2)
 library(quantmod)
 library(zoo)
+library(dlm)
 library(ggplot2)
 library(tidyr)
 source('feature_engineering_functions.R')
@@ -51,14 +52,13 @@ for (t in seq(1, length(tickers), by = batch_size)){
 plot_single_with_features <- function(df_with_features, symbol_){
   df_filtered <- df_with_features %>%
     filter(symbol == symbol_) %>%
-    # select(date, close, where(~!grepl("fwd", colnames(df_with_features))))
     select(date, close, !contains("fwd"))
   print(nrow(df_with_features))
   print(nrow(df_filtered))
   
   # As an example, choosing to plot Bollinger bands with XBRQ Symbol
   df_long <- df_filtered %>%
-   select(c(date, close, bollinger_bands_mavg_window_size_std_20_2, bollinger_bands_low_window_size_std_20_2, bollinger_bands_high_window_size_std_20_2)) %>%
+   select(c(date, close, bollinger_bands_mavg_window_size_std_20_2, bollinger_bands_low_window_size_std_20_2, bollinger_bands_high_window_size_std_20_2, kalman_filtered_close_dV_7_dW_0.01)) %>%
    pivot_longer(cols = -date, names_to = "feature", values_to = "value")
   
   
@@ -71,9 +71,7 @@ plot_single_with_features <- function(df_with_features, symbol_){
 }
 
 
-df_long <- plot_single_with_features(df_with_features, "WSM")
-
-
+df_long <- plot_single_with_features(df_with_features, "XBRQ")
 
 
 
