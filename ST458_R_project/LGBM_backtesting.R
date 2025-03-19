@@ -70,8 +70,14 @@ dev.off()
 
 hyperparameters <- training_log[1, ]
 y_preds <- lgbm_get_validation_set_predictions(df_with_features, df_with_features_test, covariate_vars, categorical_vars, hyperparameters)
-combined_position <- lgbm_get_positions_based_on_predictions(df_with_features, df_with_features_test, y_preds, hyperparameters)
-wealth_and_pnl <- get_pnl_based_on_position(df_with_features, df_with_features_test, combined_position)
+
+# This implements basic strategy of buy top 5 highest returns and short bottom 5 lowest returns
+# combined_position <- lgbm_get_positions_based_on_predictions(df_with_features, df_with_features_test, y_preds, hyperparameters)
+
+# This implements Kelly Criterion
+combined_position_kelly <- lgbm_get_positions_based_on_kelly(df_with_features, df_with_features_test, y_preds, hyperparameters)
+
+wealth_and_pnl <- get_pnl_based_on_position(df_with_features, df_with_features_test, combined_position_kelly)
 performance_evaluation_of_wealth(wealth_and_pnl$wealth, wealth_and_pnl$daily_pnl, 0.03)
 
 

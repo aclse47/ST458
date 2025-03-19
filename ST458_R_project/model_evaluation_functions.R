@@ -139,6 +139,66 @@ lgbm_get_positions_based_on_predictions <- function(df_all, df_test, y_preds, hy
 
 
 
+lgbm_get_positions_based_on_kelly <- function(df_all, df_test, y_preds, hyperparameters){
+  bunch(train_length, valid_length, lookahead) %=% hyperparameters[1:3]
+  
+  all_dates <- sort(unique(df_all$date))
+  test_dates <- sort(unique(df_test$date))
+  
+  r1fwd_test <- reshape2::dcast(df_test, date ~ symbol, value.var = 'simple_returns_fwd_day_1')
+  row.names(r1fwd_test) <- r1fwd_test$date
+  r1fwd_test <- as.matrix(r1fwd_test[, -1])
+  position <- matrix(0, nrow(r1fwd_test), ncol(r1fwd_test), dimnames = dimnames(r1fwd_test))
+  
+  r1fwd <- reshape2::dcast(df_all, date ~ symbol, value.var = 'simple_returns_fwd_day_1')
+  row.names(r1fwd) <- r1fwd$date
+  r1fwd <- as.matrix(r1fwd[, -1])
+  
+  
+  position <- matrix(0, nrow(r1fwd_test), ncol(r1fwd_test), dimnames = dimnames(r1fwd_test))
+  lookback_window = 60
+  
+  for (i in 1:nrow(y_preds)){
+    current_date <- test_dates[i]
+    daily_preds <- y_preds[i, ]
+    current_idx <- which(all_dates == current_date)
+    
+    hist_dates <- all_dates[max(1, current_idx - lookback_window):(current_idx-1)]
+    lookback_returns <- r1fwd[row.names(r1fwd) %in% hist_dates, , drop=F]
+    variances <- apply(lookback_returns, 2, var, na.rm = T)
+    
+    kelly_fractions <- daily_preds / variances
+    max_position_size <- 0.05  # Max 20% allocation per asset
+    kelly_fractions[is.na(kelly_fractions) | is.infinite(kelly_fractions)] <- 0
+    kelly_fractions <- pmin(max_position_size, pmax(-max_position_size, kelly_fractions))
+    
+    total_long <- sum(kelly_fractions[kelly_fractions > 0])
+    total_short <- abs(sum(kelly_fractions[kelly_fractions < 0]))
+    max_gross_exposure <- 1.0  # 200% gross exposure
+    if ((total_long + total_short) > max_gross_exposure) {
+      scaling_factor <- max_gross_exposure / (total_long + total_short)
+      kelly_fractions <- kelly_fractions * scaling_factor
+    }
+    
+    position[i, ] <- kelly_fractions
+  }
+  
+  
+  combined_position <- position
+  for (i in 1:nrow(position)){
+    j = max(1, i- (lookahead - 1))
+    combined_position[i,] <- colSums(position[j:i, , drop=FALSE])
+  }
+  
+  cat("Max absolute exposure for 1 wealth:", max(rowSums(abs(combined_position))) ,"\n")
+  
+  return(position)
+}
+
+
+
+
+
 # We input the positions taken on each day
 # We output the PnL of the strategy and the wealth if we had invested $1 the beginning.
 get_pnl_based_on_position <- function(df_all, df_test, combined_position){
