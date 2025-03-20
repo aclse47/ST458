@@ -10,12 +10,17 @@ library(tidyr)
 library(tensorflow)
 library(reticulate)
 library(keras3) 
+library(quantmod)
+library(xts)
+library(ggplot2)
 
 use_python("/opt/anaconda3/envs/r-tensorflow/bin/python", required = TRUE)
 tensorflow::tf_config()
 
 source("training_functions.R")
 source("feature_engineering.R")
+source("model_evaluation_functions.R")
+
 
 df <- read.csv("df_train.csv")
 df$date <- as.Date(df$date, format = "%Y-%m-%d")
@@ -127,6 +132,12 @@ y_pred <- predict(model, X_valid)
 ic_in_fold <- cor(y_pred, y_valid, method = "spearman")  
 print(ic_in_fold)
 
-# best IC found so far is 0.02606656. 
+pnl_data <- get_pnl_based_on_position(df_with_features, df_with_features$date >= '2013-01-01', combined_position)
 
+wealth <- pnl_data$wealth
+daily_pnl <- pnl_data$daily_pnl
 
+risk_free_rate <- 0.02
+performance_evaluation_of_wealth(wealth, daily_pnl, risk_free_rate)
+
+performance_evaluation_of_wealth <- function(wealth, daily_pnl, risk_free_rate)
