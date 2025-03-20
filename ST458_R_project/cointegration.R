@@ -89,43 +89,7 @@ if (length(residuals_list) > 0) {
   all_residuals <- data.frame(date = df$date)
 }
 
+write.csv(all_residuals, "residuals.csv", row.names = FALSE)
+
 df_with_features <- left_join(df, all_residuals, by = "date")
 
-print("Johansen Test Results Summary:")
-print(johansen_results)
-
-df_with_features
-########################################
-
-tickers <- unique(df$symbol)
-
-df_with_features <- add_features(df_with_features)
-df_with_features <- as.data.frame(df_with_features)
-
-response_vars <- df_with_features %>% dplyr::select(contains("fwd")) %>%colnames()
-covariate_vars <- setdiff(colnames(df_with_features), c(response_vars, 'date', 'symbol'))
-
-categorical_vars <- c()
-
-splits <- time_series_split(df_with_features$date, train_length = 126, valid_length = 21)
-
-# hyperparameter grid 
-param_df <- expand.grid(
-  train_length = c(126, 252),   
-  valid_length = c(21, 42),     
-  lookahead = c(1, 5),          
-  num_leaves = c(31, 63),       
-  min_data_in_leaf = c(20, 50), 
-  learning_rate = c(0.01, 0.05, 0.1),  
-  feature_fraction = c(0.7, 0.9),      
-  bagging_fraction = c(0.7, 0.9),      
-  num_iterations = c(100, 300)  
-)
-categorical_vars <- c()  
-training_log <- hyperparameter_grid_training_lgbm(df_with_features, param_df, 100, covariate_vars, categorical_vars)
-
-best_models <- head(training_log[order(training_log$ic, decreasing = TRUE), ], 10)
-print("Best Models Based on IC Score:")
-print(best_models)
-
-# 0.01618478 best IC
