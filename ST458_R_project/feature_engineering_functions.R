@@ -43,6 +43,91 @@ add_log_returns_col <- function(df){
   return(df_with_log_returns)
 }
 
+#-------------------------------------
+# Price related features
+#-------------------------------------
+
+
+add_price_anomalies_features <- function(df){
+  df_with_price_anomaly_features <- df %>%
+    group_by(symbol) %>%
+    arrange(date) %>%
+    mutate(
+      close_to_open = (close - open) / open,
+      close_to_high = (close - high) / high,
+      close_to_low = (close - low) / low,
+      high_low_range = (high-low) / low,
+      body_size = abs(close - open),
+      upper_wick = (high - pmax(open, close)) / body_size,
+      lower_wick = (pmin(open, close) - low) / body_size
+    ) %>%
+    ungroup() %>%
+    arrange(symbol, date)
+  return(df_with_price_anomaly_features)  
+}
+
+add_gap_features <- function(df) {
+  df_with_gaps <- df %>%
+    group_by(symbol) %>%
+    arrange(date) %>%
+    mutate(
+      gap = (open - lag(close)) / lag(close),                # Gap size
+      # gap_up = ifelse(gap > 0, gap, 0),                      # Gap up
+      # gap_down = ifelse(gap < 0, gap, 0),                    # Gap down
+      abs_gap = abs(gap)                                     # Absolute gap
+    ) %>%
+    ungroup() %>%
+    arrange(symbol, date)
+  
+  return(df_with_gaps)
+}
+
+#-------------------------------------
+# Volume related features
+#-------------------------------------
+
+add_vwap <- function(df, window_size){
+  df_with_vwap <- df %>%
+    group_by(symbol) %>%
+    arrange(date) %>%
+    mutate(VWAP = TTR::VWAP(price = close, volume = volume, n = window_size)) %>%
+    ungroup() %>%
+    arrange(symbol, date)
+  return(df_with_vwap)
+}
+
+
+add_avg_dollar_volume <- function(df, window_size){
+  df_with_dollar_vol <- df %>%
+    group_by(symbol) %>%
+    arrange(date) %>%
+    mutate(avg_dollar_volume = zoo::rollapply(close * volume, window_size, mean, fill = NA, align = "right")) %>%
+    ungroup() %>%
+    arrange(symbol, date)
+  return(df_with_dollar_vol)
+}
+
+add_relative_volume <- function(df, window_size){
+  df_with_rvol <- df %>%
+    group_by(symbol) %>%
+    arrange(date) %>%
+    mutate(avg_vol = zoo::rollmean(volume, window_size, fill = NA, align = "right"),
+           RVOL = volume / avg_vol) %>%
+    ungroup() %>%
+    arrange(symbol, date)
+  return(df_with_rvol)
+}
+
+
+add_volume_shock <- function(df){
+  df_with_shock <- df %>%
+    group_by(symbol) %>%
+    arrange(date) %>%
+    mutate(volume_shock = (volume - lag(volume)) / lag(volume)) %>%
+    ungroup() %>%
+    arrange(symbol, date)
+  return(df_with_shock)
+}
 
 #-------------------------------------
 # Volatility related features
@@ -82,6 +167,16 @@ add_avg_true_range_vol<- function(df, window_size){
   return(df_with_avg_true_range)
 }
 
+# Add Range (High-Low)
+add_range_vol <- function(df){
+  df_with_range <- df %>%
+   group_by(symbol) %>%
+   arrange(date) %>%
+   mutate(range = high - low) %>%
+   ungroup() %>%
+   arrange(symbol, date)
+  return(df_with_range) 
+}
 
 #-------------------------------------
 # Momentum related features
@@ -111,14 +206,17 @@ add_moving_average_convergence_divergence <- function(df, window_size_fast, wind
 }
 
 
-# Rate of Change (ROC)
-add_rate_of_change <- function(df, window_size){
-   df_with_roc <- df %>%
+# Rate of Change (ROC) and other momentum related features
+add_momentum_ROC_log_acceleration <- function(df, window_size){
+   df_with_momentum_features <- df %>%
     group_by(symbol) %>%
     arrange(date) %>%
     mutate(!!paste0("rate_of_change_window_size_", window_size) := TTR::ROC(close, n=window_size, type = 'discrete')) %>%
+    mutate(!!paste0("log_return_momentum_window_size", window_size) := log(close / lag(close, window_size))) %>%
+    mutate(!!paste0("price_acceleration_window_size", window_size) := close - 2 * lag(close, window_size) + lag(close, 2 * window_size)) %>%
     ungroup() %>%
     arrange(symbol, date)
+   return(df_with_momentum_features)
 }
 
 
@@ -163,6 +261,65 @@ add_kalman_filtered_data <- function(df, dV_kalman, dW_kalman){
   return(df_with_kf_close)
 }
 
+
+#-------------------------------------
+# Interaction related features
+#-------------------------------------
+
+add_volatility_x_momentum <- function(df, momentum_window_size = 21, vol_window_size = 21){
+  df_with_vol_x_momentum <- df %>%
+    group_by(symbol) %>%
+    arrange(date) %>%
+    mutate(vol_x_mom = zoo::rollapply(log(close / lag(close)), vol_window_size, sd, fill = NA, align = "right") * TTR::ROC(close, n = momentum_window_size)) %>%
+    ungroup() %>%
+    arrange(symbol, date)
+  return(df_with_vol_x_momentum)
+}
+
+
+add_volatility_x_rsi <- function(df, vol_window_size = 21, rsi_period = 14){
+  df_with_vol_x_rsi <- df %>%
+    group_by(symbol) %>%
+    arrange(date) %>%
+    mutate(vol_x_rsi = zoo::rollapply(log(close / lag(close)), vol_window_size, sd, fill = NA, align = "right") * TTR::RSI(close, n = rsi_period)) %>%
+    ungroup() %>%
+    arrange(symbol, date)
+  return(df_with_vol_x_rsi)
+}
+
+
+add_return_prev_vol <- function(df, vol_window = 30){
+  df_with_features <- df %>%
+    group_by(symbol) %>%
+    arrange(date) %>%
+    mutate(return_x_prev_vol = log(close / lag(close)) * lag(zoo::rollapply(log(close / lag(close)), vol_window, sd, fill = NA, align = "right"))) %>%
+    ungroup() %>%
+    arrange(symbol, date)
+  return(df_with_features)
+}
+
+add_range_rsi <- function(df, rsi_period = 14){
+  df_with_features <- df %>%
+    group_by(symbol) %>%
+    arrange(date) %>%
+    mutate(range_x_rsi = (high - low) * TTR::RSI(close, n = rsi_period)) %>%
+    ungroup() %>%
+    arrange(symbol, date)
+  return(df_with_features)
+}
+
+add_macd_rsi <- function(df, rsi_period = 14){
+  df_with_features <- df %>%
+    group_by(symbol) %>%
+    arrange(date) %>%
+    mutate(macd_x_rsi = TTR::MACD(close)[, 'macd'] * TTR::RSI(close, n = rsi_period)) %>%
+    ungroup() %>%
+    arrange(symbol, date)
+  return(df_with_features)
+}
+
+
+
 ##########################################################################################
 # FUNCTIONS TO ADD TARGETS
 ##########################################################################################
@@ -197,7 +354,10 @@ add_future_log_return <- function(df_with_log_returns, periods_ahead){
 # FUNCTION FOR FINAL AGGREGAGATION, DOING ALL THE PREPROCESSING STEPS
 ##########################################################################################
 
-add_features <- function(df, 
+add_features <- function(df,
+                         vwap_window_size=20,
+                         avg_dollar_volume_window_size=20,
+                         relative_volume_window_size=20,
                          rolling_std_log_returns_window_size=20, 
                          exp_weighted_moving_avg_vol_window_size=20, 
                          average_true_range_window_size=14,
@@ -221,20 +381,35 @@ add_features <- function(df,
     # Add simple returns
     add_simple_returns_col() %>% 
     add_log_returns_col() %>% 
+    # Add price related features
+    add_price_anomalies_features() %>%
+    add_gap_features() %>%
+    # Add volume related features
+    add_vwap(vwap_window_size) %>%
+    add_avg_dollar_volume(avg_dollar_volume_window_size) %>%
+    add_relative_volume(relative_volume_window_size) %>%
+    add_volume_shock() %>%
     # Add volatility measures
     add_rolling_std_log_returns(rolling_std_log_returns_window_size) %>% 
     add_exp_weighted_moving_avg_vol(exp_weighted_moving_avg_vol_window_size) %>%
     add_avg_true_range_vol(average_true_range_window_size) %>%
+    add_range_vol() %>%
     # Add momentum measures
     add_relative_strength_index(relative_strength_index_window_size) %>%
     add_moving_average_convergence_divergence(moving_average_convergence_divergence_window_size_fast,
                                               moving_average_convergence_divergence_window_size_slow,
                                               moving_average_convergence_divergence_window_size_signal) %>%
-    add_rate_of_change(rate_of_change_window_size) %>%
+    add_momentum_ROC_log_acceleration(rate_of_change_window_size) %>%
     # Add trend-based measures
     add_bollinger_bands(bb_window_size, bb_std) %>%
     add_moving_averages(sma_window_size, ema_window_size) %>%
     add_kalman_filtered_data(dV_kalman, dW_kalman) %>%
+    # Add interaction-based features
+    add_volatility_x_momentum() %>%
+    add_volatility_x_rsi() %>%
+    add_return_prev_vol() %>%
+    add_range_rsi() %>%
+    add_macd_rsi() %>%
     # Add targets 
     add_future_simple_return(prediction_period_1) %>%
     add_future_log_return(prediction_period_1) %>%

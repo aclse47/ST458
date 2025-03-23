@@ -303,10 +303,11 @@ lgbm_get_positions_based_on_kelly <- function(df_all, df_test, y_preds, hyperpar
     
     kelly_leverage <- as.numeric(portfolio_return / portfolio_variance)
     
-    max_leverage <- 1
+    max_leverage <- 20 
     applied_leverage <- min(kelly_leverage, max_leverage)
     
     position[i, ] <- market_weights * applied_leverage
+    # position[i, ] <- market_weights * kelly_leverage
   }
   
   
