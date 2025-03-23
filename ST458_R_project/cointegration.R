@@ -46,7 +46,7 @@ for (i in seq(1, length(asset_names), by = num_assets_per_group)) {
   
   if (any(is.na(df_subset))) next  
   
-  # Johansen test
+  # Johansen 
   johansen_test <- ca.jo(df_subset, type = "trace", ecdet = "none", K = 2) # trace stat for cointegration
   trace_stat <- johansen_test@teststat 
   critical_values <- johansen_test@cval
@@ -106,8 +106,11 @@ ggplot(residuals_long, aes(x = date, y = residual)) +
 # oscilate around zero - VECM is capturing the relationships 
 
 # EKXB_residual corresponds to EKXB, EZX_residual corresponds to EZX, etc
+
 # residuals represent the part of the assets returns that are not explained by the cointegration relationship 
+
 # VECM fits a model that assumes we want equilibrum, the residuals shows actual value vs exptected long run equilibrium 
+
 # could possibly contain predictions for features in lgbm - if asset goes back to equilibrium 
 
 colnames(all_residuals)
@@ -152,5 +155,3 @@ df_with_residuals <- df %>%
 
 head(df_with_residuals[df_with_residuals$symbol == "TPLF", ]) # check to see if works
 head(df_with_residuals)
-
-

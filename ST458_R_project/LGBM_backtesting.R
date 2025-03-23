@@ -64,9 +64,12 @@ head(training_log)
 ################################################################################
 
 lgbm_features_effects_plot(df_with_features_train, covariate_vars, training_log[1, ])
-lgbm_hyperparameters_marginal_effect_plot(training_log)
+lgbm_hyperparameters_marginal_effect_plot(training_log)$lookahead
 dev.off()
-
+lgbm_hyperparameters_marginal_effect_plot(lookahead$training_log)
+plots <- lgbm_hyperparameters_marginal_effect_plot(training_log)
+lookahead_plot <- plots$lookahead
+print(lookahead_plot)
 
 ################################################################################
 # Back-testing a trading algorithm on the validation set.
@@ -86,5 +89,3 @@ combined_position_mkt <- lgbm_get_positions_based_on_wmkt(df_with_features, df_w
 wealth_and_pnl <- get_pnl_based_on_position(df_with_features, df_with_features_test, combined_position)
 
 performance_evaluation_of_wealth(wealth_and_pnl$wealth, wealth_and_pnl$daily_pnl, 0.03)
-
-

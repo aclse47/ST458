@@ -12,7 +12,6 @@ library(TTR)
 library(dlm)
 
 
-
 ##########################################################################################
 # FUNCTIONS TO ADD FEATURES
 ##########################################################################################
@@ -261,6 +260,43 @@ add_kalman_filtered_data <- function(df, dV_kalman, dW_kalman){
   return(df_with_kf_close)
 }
 
+# support and resistance levels (rolling local min/max)
+add_support_resistance <- function(df, window = 10){
+  df_with_levels <- df %>%
+    group_by(symbol) %>%
+    arrange(date) %>%
+    mutate(
+      support = zoo::rollapply(low, width = window, FUN = min, fill = NA, align = "center"),
+      resistance = zoo::rollapply(high, width = window, FUN = max, fill = NA, align = "center")
+    ) %>%
+    ungroup() %>%
+    arrange(symbol, date)
+  return(df_with_levels)
+}
+
+#-------------------------------------
+# Seasonality related features
+#-------------------------------------
+# day of the week
+add_day_of_week <- function(df){
+  df_with_dow <- df %>%
+    mutate(day_of_week = lubridate::wday(date, label = FALSE) - 1) # Monday = 0
+  return(df_with_dow)
+}
+
+# month of the year
+add_month_of_year <- function(df){
+  df_with_month <- df %>%
+    mutate(month_of_year = lubridate::month(date))
+  return(df_with_month)
+}
+
+# quarter 
+add_quarter <- function(df){
+  df_with_quarter <- df %>%
+    mutate(quarter = lubridate::quarter(date))
+  return(df_with_quarter)
+}
 
 #-------------------------------------
 # Interaction related features
@@ -317,8 +353,6 @@ add_macd_rsi <- function(df, rsi_period = 14){
     arrange(symbol, date)
   return(df_with_features)
 }
-
-
 
 ##########################################################################################
 # FUNCTIONS TO ADD TARGETS
@@ -378,7 +412,7 @@ add_features <- function(df,
                          prediction_period_4=63,
                          prediction_period_5=126){
   df_with_features <- df %>% 
-    # Add simple returns
+    # Add returns
     add_simple_returns_col() %>% 
     add_log_returns_col() %>% 
     # Add price related features
@@ -404,6 +438,11 @@ add_features <- function(df,
     add_bollinger_bands(bb_window_size, bb_std) %>%
     add_moving_averages(sma_window_size, ema_window_size) %>%
     add_kalman_filtered_data(dV_kalman, dW_kalman) %>%
+    add_support_resistance() %>%
+    # Add Seasonality-based features
+    add_day_of_week() %>%
+    add_month_of_year() %>%
+    add_quarter() %>%
     # Add interaction-based features
     add_volatility_x_momentum() %>%
     add_volatility_x_rsi() %>%
@@ -421,5 +460,7 @@ add_features <- function(df,
     add_future_log_return(prediction_period_4) %>%
     add_future_simple_return(prediction_period_5) %>%
     add_future_log_return(prediction_period_5)
+  
   return(df_with_features)    
 }
+
