@@ -25,7 +25,6 @@ df_with_features <- as.data.frame(df_with_features)
 
 response_vars <- colnames(df_with_features %>% dplyr::select(matches("fwd")))
 covariate_vars <- setdiff(colnames(df_with_features), c(response_vars, 'date', 'symbol'))
-
 # Deliberately leaking in data to see how it performs.
 # Note: We get 160% rate of return!
 # covariate_vars <- c(covariate_vars, 'simple_returns_fwd_day_5')
@@ -40,20 +39,20 @@ df_with_features_test <- df_with_features[df_with_features$date >= as.Date('2013
 param_df <- expand.grid(
   train_length = c(252, 252*2, 126),
   valid_length = c(21, 63),
-  lookahead = c(5,21),
+  lookahead = c(21),
   num_leaves = c(5,10,50),
   min_data_in_leaf = c(250,1000),
   learning_rate = c(0.01,0.03,0.1),
   feature_fraction = c(0.3,0.6,0.95),
   bagging_fraction = c(0.3,0.6,0.95),
-  num_iterations = c(30,200),
+  num_iterations = c(30,200)
   
-  atr_window = c(14, 20, 50),
-  sma_window = c(10, 20, 50, 200),
-  ema_window = c(10, 20, 50, 200),
-  rsi_window = c(7, 14, 21),
-  macd_fast = c(12, 26),
-  macd_slow = c(26, 50)
+  # atr_window = c(14, 20, 50),
+  # sma_window = c(10, 20, 50, 200),
+  # ema_window = c(10, 20, 50, 200),
+  # rsi_window = c(7, 14, 21),
+  # macd_fast = c(12, 26),
+  # macd_slow = c(26, 50)
 ) 
 
 training_log <- hyperparameter_grid_training_lgbm(df_with_features_train, param_df, 100, covariate_vars, categorical_vars)
@@ -85,6 +84,7 @@ combined_position_min_var <- lgbm_get_positions_based_on_wmv(df_with_features, d
 combined_position_mkt <- lgbm_get_positions_based_on_wmkt(df_with_features, df_with_features_test, y_preds, hyperparameters)
 
 wealth_and_pnl <- get_pnl_based_on_position(df_with_features, df_with_features_test, combined_position)
+
 performance_evaluation_of_wealth(wealth_and_pnl$wealth, wealth_and_pnl$daily_pnl, 0.03)
 
 

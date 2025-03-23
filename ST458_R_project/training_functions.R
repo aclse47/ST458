@@ -126,7 +126,7 @@ n_fold_training_lgbm <- function(df_with_features,
 # Conducts training for all params in a hyper-parameter grid
 hyperparameter_grid_training_lgbm <- function(df_with_features, hyper_parameter_grid, num_param_comb, covariate_var, categorical_var){
   
-  set.seed(458)
+  set.seed(1)
   training_log <- hyper_parameter_grid[sample(nrow(hyper_parameter_grid), num_param_comb), ]
   training_log$ic <- 0
   
