@@ -260,14 +260,22 @@ add_kalman_filtered_data <- function(df, dV_kalman, dW_kalman){
   return(df_with_kf_close)
 }
 
+#-------------------------------------
+# Support/Resistance related features
+#-------------------------------------
+
 # support and resistance levels (rolling local min/max)
 add_support_resistance <- function(df, window = 10){
   df_with_levels <- df %>%
     group_by(symbol) %>%
     arrange(date) %>%
     mutate(
-      support = zoo::rollapply(low, width = window, FUN = min, fill = NA, align = "center"),
-      resistance = zoo::rollapply(high, width = window, FUN = max, fill = NA, align = "center")
+      support = zoo::rollapply(low, width = window, FUN = min, fill = NA, align = "right"),
+      resistance = zoo::rollapply(high, width = window, FUN = max, fill = NA, align = "right"),
+      dist_to_support = (close - support) / close,
+      dist_to_resistance = (resistance - close) / close,
+      close_above_support = as.integer(close > support),
+      close_below_resistance = as.integer(close < resistance)
     ) %>%
     ungroup() %>%
     arrange(symbol, date)
@@ -277,6 +285,7 @@ add_support_resistance <- function(df, window = 10){
 #-------------------------------------
 # Seasonality related features
 #-------------------------------------
+
 # day of the week
 add_day_of_week <- function(df){
   df_with_dow <- df %>%
@@ -296,6 +305,25 @@ add_quarter <- function(df){
   df_with_quarter <- df %>%
     mutate(quarter = lubridate::quarter(date))
   return(df_with_quarter)
+}
+
+# week of year 
+add_week_of_year <- function(df) {
+  df %>% mutate(week_of_year = lubridate::isoweek(date))
+}
+
+# month end  
+add_month_boundaries <- function(df) {
+  df %>%
+    mutate(
+      is_month_start = as.integer(lubridate::day(date) <= 2),
+      is_month_end = as.integer(lubridate::day(date) >= lubridate::days_in_month(date) - 1)
+    )
+}
+
+# days until month end 
+add_days_until_month_end <- function(df) {
+  df %>% mutate(days_until_month_end = lubridate::days_in_month(date) - lubridate::day(date))
 }
 
 #-------------------------------------
@@ -400,8 +428,8 @@ add_features <- function(df,
                          moving_average_convergence_divergence_window_size_slow=26,
                          moving_average_convergence_divergence_window_size_signal=9,
                          rate_of_change_window_size=14,
-                         bb_window_size=20,
-                         bb_std=2,
+#                         bb_window_size=20,
+#                         bb_std=2,
                          sma_window_size = 20,
                          ema_window_size = 20,
                          dV_kalman = 7,
@@ -435,7 +463,7 @@ add_features <- function(df,
                                               moving_average_convergence_divergence_window_size_signal) %>%
     add_momentum_ROC_log_acceleration(rate_of_change_window_size) %>%
     # Add trend-based measures
-    add_bollinger_bands(bb_window_size, bb_std) %>%
+#    add_bollinger_bands(bb_window_size, bb_std) %>%
     add_moving_averages(sma_window_size, ema_window_size) %>%
     add_kalman_filtered_data(dV_kalman, dW_kalman) %>%
     add_support_resistance() %>%
@@ -443,6 +471,9 @@ add_features <- function(df,
     add_day_of_week() %>%
     add_month_of_year() %>%
     add_quarter() %>%
+    add_week_of_year() %>%
+    add_month_boundaries() %>%
+    add_days_until_month_end() %>%
     # Add interaction-based features
     add_volatility_x_momentum() %>%
     add_volatility_x_rsi() %>%
@@ -463,4 +494,3 @@ add_features <- function(df,
   
   return(df_with_features)    
 }
-

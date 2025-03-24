@@ -86,6 +86,7 @@ lgbm_get_validation_set_predictions <- function(df_all, df_test, covariate_vars,
       dtrain <- lgb.Dataset(data=as.matrix(df_all[train_filter, covariate_vars]),
                             label=df_all[train_filter, response_var],
                             categorical_feature=categorical_vars)
+      
       model <- lgb.train(params = lgbm_params, data = dtrain, verbose=-1)
     }
     
@@ -110,19 +111,20 @@ lgbm_get_positions_based_on_predictions <- function(df_all, df_test, y_preds, hy
   bunch(train_length, valid_length, lookahead) %=% hyperparameters[1:3]
   
   all_dates <- sort(unique(df_all$date))
-  
   r1fwd <-  reshape2::dcast(df_test, date ~ symbol, value.var = 'simple_returns_fwd_day_1')
   row.names(r1fwd) <- r1fwd$date
   r1fwd <- as.matrix(r1fwd[, -1])
+  
   position <- matrix(NA, nrow(r1fwd), ncol(r1fwd), dimnames= dimnames(r1fwd))
   
   for (i in 1: (nrow(y_preds))){
-    is_short <- rank(y_preds[i, ]) <= 5
-    is_long <- rank(y_preds[i, ]) > 95
-    position[i, ] <- 0
-    position[i, is_short] <- -1/200
-    position[i, is_long] <- 1/200
-  }
+    is_short <- rank(y_preds[i, ]) <= 5  
+    is_long <- rank(y_preds[i, ]) > 95   
+    position[i, ] <- 0                   
+    position[i, is_short] <- -1/200      
+    position[i, is_long] <- 1/200        
+    
+    }
   
   combined_position <- position
   for (i in 1:nrow(position)){
