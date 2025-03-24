@@ -133,30 +133,61 @@ categorical_vars <- c()
 df_with_features_train <- df_with_features[df_with_features$date < as.Date('2013-01-01'), ]
 df_with_features_test <- df_with_features[df_with_features$date >= as.Date('2013-01-01'), ]
 
-# Hyper-parameter combination grid
+# # Hyper-parameter combination grid
+# param_df <- expand.grid(
+#   train_length = c(252, 252*2, 126),
+#   valid_length = c(21, 63),
+#   lookahead = c(5),
+#   num_leaves = c(5,10,50),
+#   min_data_in_leaf = c(250,1000),
+#   learning_rate = c(0.01,0.03,0.1),
+#   feature_fraction = c(0.3,0.6,0.95),
+#   bagging_fraction = c(0.3,0.6,0.95),
+#   num_iterations = c(30,200)
+#   
+#   # atr_window = c(14, 20, 50),
+#   # sma_window = c(10, 20, 50, 200),
+#   # ema_window = c(10, 20, 50, 200),
+#   # rsi_window = c(7, 14, 21),
+#   # macd_fast = c(12, 26),
+#   # macd_slow = c(26, 50)
+# )
+# 
+# param_df <- expand.grid(
+#   train_length = c(252, 252*2),
+#   valid_length = c(21, 63),
+#   lookahead = c(5),
+#   num_leaves = c(50, 75, 100),
+#   min_data_in_leaf = c(250,1000),
+#   learning_rate = c(0.1, 0.15, 0.2),
+#   feature_fraction = c(0.3,0.6,0.95),
+#   bagging_fraction = c(0.3,0.6,0.95),
+#   num_iterations = c(200, 250, 300)
+#   
+#   # atr_window = c(14, 20, 50),
+#   # sma_window = c(10, 20, 50, 200),
+#   # ema_window = c(10, 20, 50, 200),
+#   # rsi_window = c(7, 14, 21),
+#   # macd_fast = c(12, 26),
+#   # macd_slow = c(26, 50)
+# )
+
+
 param_df <- expand.grid(
-  train_length = c(252, 252*2, 126),
+  train_length = c(252*2),
   valid_length = c(21, 63),
   lookahead = c(5),
-  num_leaves = c(5,10,50),
+  num_leaves = c(50, 75, 100),
   min_data_in_leaf = c(250,1000),
-  learning_rate = c(0.01,0.03,0.1),
-  feature_fraction = c(0.3,0.6,0.95),
+  learning_rate = c(0.1, 0.15, 0.2, 0.5),
+  feature_fraction = c(0.95, 1.00),
   bagging_fraction = c(0.3,0.6,0.95),
-  num_iterations = c(30,200)
-  
-  # atr_window = c(14, 20, 50),
-  # sma_window = c(10, 20, 50, 200),
-  # ema_window = c(10, 20, 50, 200),
-  # rsi_window = c(7, 14, 21),
-  # macd_fast = c(12, 26),
-  # macd_slow = c(26, 50)
-) 
+  num_iterations = c(200, 250, 300)
+)
 
 training_log <- hyperparameter_grid_training_lgbm(df_with_features_train, param_df, 100, covariate_vars, categorical_vars)
 training_log <- sort_data_frame(training_log, 'ic', decreasing=T)
 head(training_log)
-
 ################################################################################
 # Evaluation of LGBM with some plots
 ################################################################################
