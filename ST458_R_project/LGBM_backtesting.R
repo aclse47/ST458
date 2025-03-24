@@ -9,6 +9,7 @@ library(quantmod)
 library(zoo)
 library(ggplot2)
 library(TTR)
+library(urca)
 
 source('training_functions.R')
 source('feature_engineering_functions.R')
@@ -113,8 +114,9 @@ head(df_with_residuals[df_with_residuals$symbol == "TPLF", ]) # check to see if 
 
 tickers <- unique(df$symbol)
 
-df_with_features <- add_features(df, dV_kalman = 10, dW_kalman = 0.0001)
+df_with_features <- add_features(df_with_residuals, dV_kalman = 10, dW_kalman = 0.0001)
 df_with_features <- as.data.frame(df_with_features)
+head(df_with_features)
 
 ################################################################################
 # LGBM
