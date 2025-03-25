@@ -472,15 +472,15 @@ add_features <- function(df,
     add_past_simple_return(prediction_period_4) %>%
     add_past_log_return(prediction_period_4) %>%
     # Add price related features
-    #add_price_anomalies_features() %>%
-    #add_gap_features() %>%
+    add_price_anomalies_features() %>%
+    add_gap_features() %>%
     # Add volume related features
-    #add_vwap(vwap_window_size) %>%
-    #add_avg_dollar_volume(avg_dollar_volume_window_size) %>%
-    #add_relative_volume(relative_volume_window_size) %>%
-    #add_volume_shock() %>%
+    add_vwap(vwap_window_size) %>%
+    add_avg_dollar_volume(avg_dollar_volume_window_size) %>%
+    add_relative_volume(relative_volume_window_size) %>%
+    add_volume_shock() %>%
     # Add volatility measures
-    #add_rolling_std_log_returns(rolling_std_log_returns_window_size) %>% 
+    add_rolling_std_log_returns(rolling_std_log_returns_window_size) %>% 
     add_exp_weighted_moving_avg_vol(exp_weighted_moving_avg_vol_window_size) %>%
     #add_avg_true_range_vol(average_true_range_window_size) %>%
     add_range_vol() %>%
@@ -499,13 +499,13 @@ add_features <- function(df,
     add_day_of_week() %>%
     add_month_of_year() %>%
     add_quarter() %>%
-    #add_week_of_year() %>%
-    #add_month_boundaries() %>%
-    #add_days_until_month_end() %>%
+    add_week_of_year() %>%
+    add_month_boundaries() %>%
+    add_days_until_month_end() %>%
     # Add interaction-based features
-    # add_volatility_x_momentum() %>%
-    # add_volatility_x_rsi() %>%
-    # add_return_prev_vol() %>%
+    add_volatility_x_momentum() %>%
+    add_volatility_x_rsi() %>%
+    add_return_prev_vol() %>%
     # add_range_rsi() %>%
     # add_macd_rsi() %>%
     # Add targets 
