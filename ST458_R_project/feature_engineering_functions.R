@@ -450,8 +450,8 @@ add_features <- function(df,
                          moving_average_convergence_divergence_window_size_slow=26,
                          moving_average_convergence_divergence_window_size_signal=9,
                          rate_of_change_window_size=14,
-#                         bb_window_size=20,
-#                         bb_std=2,
+                         bb_window_size=20,
+                         bb_std=2,
                          sma_window_size = 20,
                          ema_window_size = 20,
                          dV_kalman = 7,
@@ -482,19 +482,19 @@ add_features <- function(df,
     # Add volatility measures
     add_rolling_std_log_returns(rolling_std_log_returns_window_size) %>% 
     add_exp_weighted_moving_avg_vol(exp_weighted_moving_avg_vol_window_size) %>%
-    add_avg_true_range_vol(average_true_range_window_size) %>%
+    #add_avg_true_range_vol(average_true_range_window_size) %>%
     add_range_vol() %>%
     # Add momentum measures
-    add_relative_strength_index(relative_strength_index_window_size) %>%
-    add_moving_average_convergence_divergence(moving_average_convergence_divergence_window_size_fast,
-                                              moving_average_convergence_divergence_window_size_slow,
-                                              moving_average_convergence_divergence_window_size_signal) %>%
-    add_momentum_ROC_log_acceleration(rate_of_change_window_size) %>%
+    #add_relative_strength_index(relative_strength_index_window_size) %>%
+    #add_moving_average_convergence_divergence(moving_average_convergence_divergence_window_size_fast,
+    #                                          moving_average_convergence_divergence_window_size_slow,
+    #                                          moving_average_convergence_divergence_window_size_signal) %>%
+    #add_momentum_ROC_log_acceleration(rate_of_change_window_size) %>%
     # Add trend-based measures
-    add_bollinger_bands(bb_window_size, bb_std) %>%
-    add_moving_averages(sma_window_size, ema_window_size) %>%
-    add_kalman_filtered_data(dV_kalman, dW_kalman) %>%
-    add_support_resistance() %>%
+    #add_bollinger_bands(bb_window_size, bb_std) %>%
+    #add_moving_averages(sma_window_size, ema_window_size) %>%
+    #add_kalman_filtered_data(dV_kalman, dW_kalman) %>%
+    #add_support_resistance() %>%
     # Add Seasonality-based features
     add_day_of_week() %>%
     add_month_of_year() %>%
@@ -503,9 +503,9 @@ add_features <- function(df,
     add_month_boundaries() %>%
     add_days_until_month_end() %>%
     # Add interaction-based features
-    # add_volatility_x_momentum() %>%
-    # add_volatility_x_rsi() %>%
-    # add_return_prev_vol() %>%
+    add_volatility_x_momentum() %>%
+    add_volatility_x_rsi() %>%
+    add_return_prev_vol() %>%
     # add_range_rsi() %>%
     # add_macd_rsi() %>%
     # Add targets 

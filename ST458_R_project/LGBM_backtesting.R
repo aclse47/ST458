@@ -127,7 +127,7 @@ df_with_residuals <- df %>%
 
 df_with_residuals[df_with_residuals$symbol == "ACTS" & df_with_residuals$date == as.Date("2011-01-11"), ] # check to see if works
 
-df_with_features <- add_features(df_with_residuals, dV_kalman = 10, dW_kalman = 0.0001)
+df_with_features <- add_features(df, dV_kalman = 10, dW_kalman = 0.0001)
 df_with_features <- as.data.frame(df_with_features)
 
 head(df_with_features)

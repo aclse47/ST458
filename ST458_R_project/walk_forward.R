@@ -60,7 +60,7 @@ df_train <- df[train_idx, ]
 df_test <- df[!train_idx, ]
 
 # Load strategy functions
-script_name <- 'example_script.R' # change to your own script name
+script_name <- 'LGBM_walk_forward_backtesting.R'
 source(script_name)
 
 # Run backtest
