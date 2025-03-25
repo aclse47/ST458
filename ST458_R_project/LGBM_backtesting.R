@@ -139,11 +139,11 @@ tickers <- unique(df$symbol)
 ################################################################################
 
 response_vars <- colnames(df_with_features %>% dplyr::select(matches("fwd")))
-covariate_vars <- setdiff(colnames(df_with_features), c(response_vars, 'date', 'symbol'))
+covariate_vars <- setdiff(colnames(df_with_features), c(response_vars, 'date', 'symbol', 'residual', 'residual_lag1', 'residual_lag2'))
 # Deliberately leaking in data to see how it performs.
 # Note: We get 160% rate of return!
 
-categorical_vars <- c()
+categorical_vars <- c('quarter', 'month_of_year', 'day_of_week')
 
 df_with_features_train <- df_with_features[df_with_features$date < as.Date('2013-01-01'), ]
 df_with_features_test <- df_with_features[df_with_features$date >= as.Date('2013-01-01'), ]
@@ -187,18 +187,19 @@ df_with_features_test <- df_with_features[df_with_features$date >= as.Date('2013
 #   # macd_slow = c(26, 50)
 # )
 
-# tuned params 
-#param_df <- expand.grid(
-#  train_length = c(252*2),
-#  valid_length = c(21, 63),
-#  lookahead = c(5),
-#  num_leaves = c(50, 75, 100),
-#  min_data_in_leaf = c(250,1000),
-#  learning_rate = c(0.1, 0.15, 0.2, 0.5),
-#  feature_fraction = c(0.95, 1.00),
-#  bagging_fraction = c(0.3,0.6,0.95),
-#  num_iterations = c(200, 250, 300)
-#)
+
+param_df <- expand.grid(
+  train_length = c(252, 252*2),
+  valid_length = c(21, 63),
+  lookahead = c(5),
+  num_leaves = c(50, 75, 100),
+  min_data_in_leaf = c(250,1000),
+  learning_rate = c(0.1, 0.15, 0.2, 0.5),
+  feature_fraction = c(0.95, 1.00),
+  bagging_fraction = c(0.3,0.6,0.95),
+  num_iterations = c(200, 250, 300)
+)
+
 training_log <- hyperparameter_grid_training_lgbm(df_with_features_train, param_df, 100, covariate_vars, categorical_vars)
 training_log <- sort_data_frame(training_log, 'ic', decreasing=T)
 head(training_log)
