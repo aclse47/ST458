@@ -98,18 +98,19 @@ n_fold_training_lgbm <- function(df_with_features,
                                  ){
   nfolds <- length(splits)
   ic_by_day <- numeric()
+  
   for (fold in 1: nfolds){
     bunch(train_idx, valid_idx) %=% splits[[fold]]
     
     dtrain <- lgb.Dataset(data = as.matrix(df_with_features[train_idx, covariate_var]),
-                          label = df_with_features[train_idx, response_var],
+                          label = as.numeric(df_with_features[[response_var]][train_idx]),  
                           categorical_feature = as.character(categorical_var))
     
     
     model <- lgb.train(params = lgbm_params, data = dtrain, verbose = -1)
     y_pred <- predict(model, as.matrix(df_with_features[valid_idx, covariate_var]))
     y_pred <- unname(y_pred)
-    y_true <- df_with_features[valid_idx, response_var]
+    y_true <- as.numeric(df_with_features[[response_var]][valid_idx])  
     ic_in_fold <- compute_ic(df_with_features[valid_idx,'date'], y_true, y_pred)
     ic_by_day <- c(ic_by_day, ic_in_fold)
     
@@ -147,7 +148,7 @@ hyperparameter_grid_training_lgbm <- function(df_with_features, hyper_parameter_
     
     
     response_var <- sprintf("simple_returns_fwd_day_%01d", training_log$lookahead[i])
-    
+
     #df_with_features <- df_with_features[!is.na(df_with_features[[response_var]]), ]
     
     splits <- time_series_split(df_with_features$date, train_length = train_length, valid_length = valid_length, lookahead = lookahead)
