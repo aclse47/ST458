@@ -123,12 +123,12 @@ head(df_with_features)
 ################################################################################
 
 response_vars <- colnames(df_with_features %>% dplyr::select(matches("fwd")))
-covariate_vars <- setdiff(colnames(df_with_features), c(response_vars, 'date', 'symbol'))
+covariate_vars <- setdiff(colnames(df_with_features), c(response_vars, 'date', 'symbol', 'residual', 'residual_lag1', 'residual_lag2'))
 # Deliberately leaking in data to see how it performs.
 # Note: We get 160% rate of return!
 # covariate_vars <- c(covariate_vars, 'simple_returns_fwd_day_5')
 
-categorical_vars <- c()
+categorical_vars <- c('quarter', 'month_of_year', 'day_of_week')
 
 df_with_features_train <- df_with_features[df_with_features$date < as.Date('2013-01-01'), ]
 df_with_features_test <- df_with_features[df_with_features$date >= as.Date('2013-01-01'), ]
@@ -174,7 +174,7 @@ df_with_features_test <- df_with_features[df_with_features$date >= as.Date('2013
 
 
 param_df <- expand.grid(
-  train_length = c(252*2),
+  train_length = c(252, 252*2),
   valid_length = c(21, 63),
   lookahead = c(5),
   num_leaves = c(50, 75, 100),

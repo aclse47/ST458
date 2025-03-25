@@ -42,6 +42,28 @@ add_log_returns_col <- function(df){
   return(df_with_log_returns)
 }
 
+# If we wan
+add_past_simple_return <- function(df_with_simple_returns, periods_behind){
+  df_with_past_simple_returns <- df_with_simple_returns %>%
+   group_by(symbol) %>%
+   arrange(date) %>%
+   mutate(!!paste0("simple_returns_bwd_day_", periods_behind) := ((close / lag(close, n = periods_behind)) - 1)) %>%
+   ungroup() %>%
+   arrange(symbol, date)
+  return(df_with_past_simple_returns)
+}
+
+add_past_log_return <- function(df_with_log_returns, periods_behind){
+  df_with_past_log_returns <- df_with_log_returns %>%
+   group_by(symbol) %>%
+   arrange(date) %>%
+   mutate(!!paste0("log_returns_bwd_day_", periods_behind) := log(close / lag(close, n = periods_behind))) %>%
+   ungroup() %>%
+   arrange(symbol, date)
+  return(df_with_past_log_returns)
+}
+
+
 #-------------------------------------
 # Price related features
 #-------------------------------------
@@ -415,6 +437,12 @@ add_features <- function(df,
     # Add returns
     add_simple_returns_col() %>% 
     add_log_returns_col() %>% 
+    add_past_simple_return(prediction_period_2) %>%
+    add_past_log_return(prediction_period_2) %>%
+    add_past_simple_return(prediction_period_3) %>%
+    add_past_log_return(prediction_period_3) %>%
+    add_past_simple_return(prediction_period_4) %>%
+    add_past_log_return(prediction_period_4) %>%
     # Add price related features
     add_price_anomalies_features() %>%
     add_gap_features() %>%
@@ -435,20 +463,20 @@ add_features <- function(df,
                                               moving_average_convergence_divergence_window_size_signal) %>%
     add_momentum_ROC_log_acceleration(rate_of_change_window_size) %>%
     # Add trend-based measures
-    add_bollinger_bands(bb_window_size, bb_std) %>%
-    add_moving_averages(sma_window_size, ema_window_size) %>%
-    add_kalman_filtered_data(dV_kalman, dW_kalman) %>%
-    add_support_resistance() %>%
+    # add_bollinger_bands(bb_window_size, bb_std) %>%
+    # add_moving_averages(sma_window_size, ema_window_size) %>%
+    # add_kalman_filtered_data(dV_kalman, dW_kalman) %>%
+    # add_support_resistance() %>%
     # Add Seasonality-based features
     add_day_of_week() %>%
     add_month_of_year() %>%
     add_quarter() %>%
     # Add interaction-based features
-    add_volatility_x_momentum() %>%
-    add_volatility_x_rsi() %>%
-    add_return_prev_vol() %>%
-    add_range_rsi() %>%
-    add_macd_rsi() %>%
+    # add_volatility_x_momentum() %>%
+    # add_volatility_x_rsi() %>%
+    # add_return_prev_vol() %>%
+    # add_range_rsi() %>%
+    # add_macd_rsi() %>%
     # Add targets 
     add_future_simple_return(prediction_period_1) %>%
     add_future_log_return(prediction_period_1) %>%
