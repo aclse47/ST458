@@ -127,7 +127,7 @@ df_with_residuals <- df %>%
 
 df_with_residuals[df_with_residuals$symbol == "ACTS" & df_with_residuals$date == as.Date("2011-01-11"), ] # check to see if works
 
-df_with_features <- add_features(df, dV_kalman = 10, dW_kalman = 0.0001)
+df_with_features <- add_features(df_with_residuals, dV_kalman = 10, dW_kalman = 0.0001 ) 
 df_with_features <- as.data.frame(df_with_features)
 
 head(df_with_features)
@@ -139,11 +139,11 @@ tickers <- unique(df$symbol)
 ################################################################################
 
 response_vars <- colnames(df_with_features %>% dplyr::select(matches("fwd")))
-covariate_vars <- setdiff(colnames(df_with_features), c(response_vars, 'date', 'symbol', 'residual', 'residual_lag1', 'residual_lag2'))
+covariate_vars <- setdiff(colnames(df_with_features), c(response_vars, 'date', 'symbol')) # 'residual', 'residual_lag1', 'residual_lag2'
 # Deliberately leaking in data to see how it performs.
 # Note: We get 160% rate of return!
 
-categorical_vars <- c('quarter', 'month_of_year', 'day_of_week')
+categorical_vars <- c('month_of_year', 'day_of_week') # quarter
 
 df_with_features_train <- df_with_features[df_with_features$date < as.Date('2013-01-01'), ]
 df_with_features_test <- df_with_features[df_with_features$date >= as.Date('2013-01-01'), ]
@@ -195,7 +195,7 @@ param_df <- expand.grid(
   num_leaves = c(50, 75, 100),
   min_data_in_leaf = c(250,1000),
   learning_rate = c(0.1, 0.15, 0.2, 0.5),
-  feature_fraction = c(0.95, 1.00),
+  feature_fraction = c(0.6, 0.95, 1.00),
   bagging_fraction = c(0.3,0.6,0.95),
   num_iterations = c(200, 250, 300)
 )
@@ -217,6 +217,7 @@ lgbm_hyperparameters_marginal_effect_plot(training_log)
 ################################################################################
 
 hyperparameters <- training_log[1, ]
+hyperparameters
 y_preds <- lgbm_get_validation_set_predictions(df_with_features, df_with_features_test, covariate_vars, categorical_vars, hyperparameters)
 
 # This implements basic strategy of buy top 5 highest returns and short bottom 5 lowest returns
@@ -233,7 +234,7 @@ wealth_and_pnl <- get_pnl_based_on_position(df_with_features, df_with_features_t
 performance_evaluation_of_wealth(wealth_and_pnl$wealth, wealth_and_pnl$daily_pnl, 0.03)
 
 
-# pruning features:
+# Pruning Features:
 # checking for highly correlated features (to remove redundant ones)
 numeric_covariates <- df_with_features %>%
   dplyr::select(all_of(covariate_vars)) %>%
@@ -255,4 +256,20 @@ redundant_pairs <- get_highly_correlated_pairs(cor_matrix, threshold = 0.95)
 as.data.frame(redundant_pairs)
 redundant_pairs <- redundant_pairs %>%
   arrange(desc(correlation))
-print(redundant_pairs) # removing features doesnt do much at all to ic and decreases SR 
+print(redundant_pairs) 
+
+
+# least important features (function added to training_functions.R)
+least_important <- extract_least_important_features(
+  df = df_with_features_train,
+  training_log = training_log,
+  covariate_vars = covariate_vars,
+  categorical_vars = categorical_vars,
+  response_var = "simple_returns_fwd_day_5"
+)
+least_important
+
+
+
+
+

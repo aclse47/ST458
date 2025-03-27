@@ -343,9 +343,10 @@ add_month_boundaries <- function(df) {
     )
 }
 
-# days until month end 
+# days until month end
 add_days_until_month_end <- function(df) {
-  df %>% mutate(days_until_month_end = lubridate::days_in_month(date) - lubridate::day(date))
+  df %>%
+    mutate(days_until_month_end = lubridate::days_in_month(date) - lubridate::day(date))
 }
 
 #-------------------------------------
@@ -439,19 +440,19 @@ add_future_log_return <- function(df_with_log_returns, periods_ahead){
 ##########################################################################################
 
 add_features <- function(df,
-                         vwap_window_size=20,
+                         #vwap_window_size=20,
                          avg_dollar_volume_window_size=20,
                          relative_volume_window_size=20,
                          rolling_std_log_returns_window_size=20, 
-                         exp_weighted_moving_avg_vol_window_size=20, 
+                         #exp_weighted_moving_avg_vol_window_size=20, 
                          average_true_range_window_size=14,
                          relative_strength_index_window_size=14,
-                         moving_average_convergence_divergence_window_size_fast=12,
-                         moving_average_convergence_divergence_window_size_slow=26,
-                         moving_average_convergence_divergence_window_size_signal=9,
+                      #   moving_average_convergence_divergence_window_size_fast=12,
+                      #   moving_average_convergence_divergence_window_size_slow=26,
+                      #   moving_average_convergence_divergence_window_size_signal=9,
                          rate_of_change_window_size=14,
-                         bb_window_size=20,
-                         bb_std=2,
+                         #bb_window_size=20,
+                         #bb_std=2,
                          sma_window_size = 20,
                          ema_window_size = 20,
                          dV_kalman = 7,
@@ -468,46 +469,46 @@ add_features <- function(df,
     add_past_simple_return(prediction_period_2) %>%
     add_past_log_return(prediction_period_2) %>%
     add_past_simple_return(prediction_period_3) %>%
-    add_past_log_return(prediction_period_3) %>%
+    #add_past_log_return(prediction_period_3) %>%
     add_past_simple_return(prediction_period_4) %>%
-    add_past_log_return(prediction_period_4) %>%
+    #add_past_log_return(prediction_period_4) %>%
     # Add price related features
-    add_price_anomalies_features() %>%
+  #  add_price_anomalies_features() %>%
     add_gap_features() %>%
     # Add volume related features
-    add_vwap(vwap_window_size) %>%
+    #add_vwap(vwap_window_size) %>%
     add_avg_dollar_volume(avg_dollar_volume_window_size) %>%
     add_relative_volume(relative_volume_window_size) %>%
     add_volume_shock() %>%
     # Add volatility measures
     add_rolling_std_log_returns(rolling_std_log_returns_window_size) %>% 
-    add_exp_weighted_moving_avg_vol(exp_weighted_moving_avg_vol_window_size) %>%
-    #add_avg_true_range_vol(average_true_range_window_size) %>%
+    #add_exp_weighted_moving_avg_vol(exp_weighted_moving_avg_vol_window_size) %>%
+    add_avg_true_range_vol(average_true_range_window_size) %>%
     add_range_vol() %>%
     # Add momentum measures
-    #add_relative_strength_index(relative_strength_index_window_size) %>%
-    #add_moving_average_convergence_divergence(moving_average_convergence_divergence_window_size_fast,
-    #                                          moving_average_convergence_divergence_window_size_slow,
-    #                                          moving_average_convergence_divergence_window_size_signal) %>%
-    #add_momentum_ROC_log_acceleration(rate_of_change_window_size) %>%
+    add_relative_strength_index(relative_strength_index_window_size) %>%
+ #   add_moving_average_convergence_divergence(moving_average_convergence_divergence_window_size_fast,
+                                #              moving_average_convergence_divergence_window_size_slow,
+                                #              moving_average_convergence_divergence_window_size_signal) %>%
+   # add_momentum_ROC_log_acceleration(rate_of_change_window_size) %>%
     # Add trend-based measures
     #add_bollinger_bands(bb_window_size, bb_std) %>%
-    #add_moving_averages(sma_window_size, ema_window_size) %>%
-    #add_kalman_filtered_data(dV_kalman, dW_kalman) %>%
+  #  add_moving_averages(sma_window_size, ema_window_size) %>%
+    add_kalman_filtered_data(dV_kalman, dW_kalman) %>%
     #add_support_resistance() %>%
     # Add Seasonality-based features
     add_day_of_week() %>%
     add_month_of_year() %>%
-    add_quarter() %>%
-    add_week_of_year() %>%
+  #  add_quarter() %>%
+   # add_week_of_year() %>%
     add_month_boundaries() %>%
     add_days_until_month_end() %>%
     # Add interaction-based features
     add_volatility_x_momentum() %>%
     add_volatility_x_rsi() %>%
     add_return_prev_vol() %>%
-    # add_range_rsi() %>%
-    # add_macd_rsi() %>%
+  #   add_range_rsi() %>%
+  #   add_macd_rsi() %>%
     # Add targets 
     add_future_simple_return(prediction_period_1) %>%
     add_future_log_return(prediction_period_1) %>%
