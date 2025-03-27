@@ -99,6 +99,7 @@ n_fold_training_lgbm <- function(df_with_features,
   nfolds <- length(splits)
   ic_by_day <- numeric()
   
+  
   for (fold in 1: nfolds){
     bunch(train_idx, valid_idx) %=% splits[[fold]]
     
@@ -121,7 +122,18 @@ n_fold_training_lgbm <- function(df_with_features,
 
 
 
+get_bottom_n_liquid_assets <- function(df_with_features, number_stocks_chosen){
+  tmp <- aggregate(dollar_volume ~ symbol, data=df_with_features, FUN = mean)
+  tmp <- sort_data_frame(tmp, 'dollar_volume', decreasing=F)
+  symbols_selected <- sort(head(tmp$symbol, number_stocks_chosen))
+  df_with_features_bottom_n_liquid_assets <- df_with_features[df_with_features$symbol %in% symbols_selected, ]
+  return(df_with_features_bottom_n_liquid_assets)
+}
 
+get_filtered_given_symbols <- function(df_with_features, symbols){
+  df_with_features_filtered <- df_with_features %>% filter(symbol %in% symbols)
+  return(df_with_features_filtered)
+}
 
 
 # Conducts training for all params in a hyper-parameter grid
@@ -135,7 +147,7 @@ hyperparameter_grid_training_lgbm <- function(df_with_features, hyper_parameter_
   for (i in 1:num_param_comb){
     bunch(train_length, valid_length, lookahead, num_leaves,
           min_data_in_leaf, learning_rate, feature_fraction,
-          bagging_fraction, num_iterations) %=% training_log[i, 1:9]
+          bagging_fraction, num_iterations, number_stocks_chosen) %=% training_log[i, 1:10]
     
     lgbm_params = list(
       objective = 'regression',
@@ -147,14 +159,14 @@ hyperparameter_grid_training_lgbm <- function(df_with_features, hyper_parameter_
     )
     
     
+    df_with_features_filtered_assets <- get_bottom_n_liquid_assets(df_with_features, number_stocks_chosen)
+    
     response_var <- sprintf("simple_returns_fwd_day_%01d", training_log$lookahead[i])
 
-    #df_with_features <- df_with_features[!is.na(df_with_features[[response_var]]), ]
     
-    splits <- time_series_split(df_with_features$date, train_length = train_length, valid_length = valid_length, lookahead = lookahead)
+    splits <- time_series_split(df_with_features_filtered_assets$date, train_length = train_length, valid_length = valid_length, lookahead = lookahead)
     
-    
-    training_log$ic[i] <- mean_ic <- n_fold_training_lgbm(df_with_features, splits, covariate_var, categorical_var, response_var, lgbm_params)
+    training_log$ic[i] <- mean_ic <- n_fold_training_lgbm(df_with_features_filtered_assets, splits, covariate_var, categorical_var, response_var, lgbm_params)
     printPercentage(i, num_param_comb)
   }
   

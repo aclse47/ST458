@@ -55,7 +55,7 @@ df<- read.csv('df_train.csv')
 
 # here we use part of the df_train.csv for testing, 
 # an additional test data set will be supplied in actual running
-train_idx <- df$date < as.Date('2012-01-01')
+train_idx <- df$date < as.Date('2013-01-01')
 df_train <- df[train_idx, ]
 df_test <- df[!train_idx, ]
 
