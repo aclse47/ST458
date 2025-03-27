@@ -173,7 +173,33 @@ hyperparameter_grid_training_lgbm <- function(df_with_features, hyper_parameter_
   return(training_log)
 }
 
-
-
-
-
+# find the least important features
+extract_least_important_features <- function(df, training_log, covariate_vars, categorical_vars, response_var, num_features = 10) {
+  df <- df[!is.na(df[[response_var]]), ] # drop NAs
+  
+  best_params <- training_log[1, ] # based on ic 
+  
+  bunch(train_length, valid_length, lookahead, num_leaves,
+        min_data_in_leaf, learning_rate, feature_fraction,
+        bagging_fraction, num_iterations) %=% best_params[1:9]
+  
+  lgbm_params = list(
+    objective = 'regression',
+    num_iterations = num_iterations,
+    num_leaves = num_leaves,
+    learning_rate = learning_rate,
+    feature_fraction = feature_fraction,
+    bagging_fraction = bagging_fraction
+  )
+  
+  dtrain <- lgb.Dataset(
+    data = as.matrix(df[, covariate_vars]),
+    label = df[[response_var]],
+    categorical_feature = categorical_vars
+  )
+  
+  model <- lgb.train(params = lgbm_params, data = dtrain, verbose = -1)
+  importance <- lgb.importance(model) # extract feature importance 
+  
+  return(tail(importance[order(importance$Gain), "Feature"], num_features)) # return the least important features
+}
