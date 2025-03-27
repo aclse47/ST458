@@ -10,11 +10,13 @@ library(zoo)
 library(ggplot2)
 library(TTR)
 
+source('training_functions.R')
 
 
 # rank features according to importance in predicting future returns
 lgbm_features_effects_plot <- function(df_train, covariate_vars, hyperparameters){
   bunch(train_length, valid_length, lookahead) %=% hyperparameters[1:3]
+    
   response_var <- sprintf("simple_returns_fwd_day_%01d", hyperparameters$lookahead)
   
   params <- list(
@@ -38,8 +40,8 @@ lgbm_features_effects_plot <- function(df_train, covariate_vars, hyperparameters
 
 # Marginal effect of hyper-parameters on model performance.
 lgbm_hyperparameters_marginal_effect_plot <- function(training_log){
-  par(mfrow=c(3,3), mar=c(3,2.5,1,1), mgp=c(1.5,0.5,0))
-  for (j in 1:9){
+  par(mfrow=c(3,4), mar=c(3,2.5,1,1), mgp=c(1.5,0.5,0))
+  for (j in 1:10){
     plot(as.factor(training_log[[j]]), training_log$ic,
          xlab=colnames(training_log)[j])
   }
@@ -50,6 +52,8 @@ lgbm_hyperparameters_marginal_effect_plot <- function(training_log){
 
 lgbm_get_validation_set_predictions <- function(df_all, df_test, covariate_vars, categorical_vars, hyperparameters){
   bunch(train_length, valid_length, lookahead) %=% hyperparameters[1:3]
+  
+  
   response_var <- sprintf("simple_returns_fwd_day_%01d", hyperparameters$lookahead)
   lgbm_params <- list(
     objective ='regression',
@@ -67,6 +71,7 @@ lgbm_get_validation_set_predictions <- function(df_all, df_test, covariate_vars,
   row.names(r1fwd) <- r1fwd$date
   r1fwd <- as.matrix(r1fwd[, -1])
   y_pred <- matrix(NA, nrow(r1fwd), ncol(r1fwd), dimnames= dimnames(r1fwd))
+  
   
   
   for (i in 1: nrow(y_pred)){
@@ -92,10 +97,9 @@ lgbm_get_validation_set_predictions <- function(df_all, df_test, covariate_vars,
     
     test_filter <- df_all$date %in% date
     
-    
     preds <- predict(model, as.matrix(df_all[test_filter, covariate_vars]))
-    y_pred[date, df_all$symbol[test_filter]] <- preds
     
+    y_pred[date, df_all$symbol[test_filter]] <- preds
     printPercentage(date, row.names(y_pred))
   }
   return(y_pred)
@@ -119,7 +123,7 @@ lgbm_get_positions_based_on_predictions <- function(df_all, df_test, y_preds, hy
   
   for (i in 1: (nrow(y_preds))){
     is_short <- rank(y_preds[i, ]) <= 5  
-    is_long <- rank(y_preds[i, ]) > 95   
+    is_long <- rank(y_preds[i, ]) > length(colnames(y_preds)) - 5   
     position[i, ] <- 0                   
     position[i, is_short] <- -1/200      
     position[i, is_long] <- 1/200        

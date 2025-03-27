@@ -129,6 +129,7 @@ df_with_residuals[df_with_residuals$symbol == "ACTS" & df_with_residuals$date ==
 
 df_with_features <- add_features(df, dV_kalman = 10, dW_kalman = 0.0001)
 df_with_features <- as.data.frame(df_with_features)
+# df_with_features <- get_bottom_n_liquid_assets(df_with_features, 20)
 
 head(df_with_features)
 
@@ -197,13 +198,14 @@ param_df <- expand.grid(
   learning_rate = c(0.1, 0.15, 0.2, 0.5),
   feature_fraction = c(0.95, 1.00),
   bagging_fraction = c(0.3,0.6,0.95),
-  num_iterations = c(200, 250, 300)
+  num_iterations = c(200, 250, 300),
+  
+  number_stocks_chosen = c(20, 50, 80, 100)
 )
 
-training_log <- hyperparameter_grid_training_lgbm(df_with_features_train, param_df, 100, covariate_vars, categorical_vars)
+training_log <- hyperparameter_grid_training_lgbm(df_with_features_train, param_df, 10, covariate_vars, categorical_vars)
 training_log <- sort_data_frame(training_log, 'ic', decreasing=T)
 head(training_log)
-
 ################################################################################
 # Evaluation of LGBM with some plots
 ################################################################################
@@ -217,18 +219,25 @@ lgbm_hyperparameters_marginal_effect_plot(training_log)
 ################################################################################
 
 hyperparameters <- training_log[1, ]
-y_preds <- lgbm_get_validation_set_predictions(df_with_features, df_with_features_test, covariate_vars, categorical_vars, hyperparameters)
+
+bottom_liquid_covariates <- unique(get_bottom_n_liquid_assets(df_with_features_train, hyperparameters[10]$number_stocks_chosen)$symbol)
+
+df_with_features_filtered <- get_filtered_given_symbols(df_with_features, bottom_liquid_covariates)
+df_with_features_train_filtered <- get_filtered_given_symbols(df_with_features_train, bottom_liquid_covariates)
+df_with_features_test_filtered <- get_filtered_given_symbols(df_with_features_test, bottom_liquid_covariates)
+
+y_preds <- lgbm_get_validation_set_predictions(df_with_features_filtered, df_with_features_test_filtered, covariate_vars, categorical_vars, hyperparameters)
 
 # This implements basic strategy of buy top 5 highest returns and short bottom 5 lowest returns
-combined_position <- lgbm_get_positions_based_on_predictions(df_with_features, df_with_features_test, y_preds, hyperparameters)
+combined_position <- lgbm_get_positions_based_on_predictions(df_with_features_filtered, df_with_features_test_filtered, y_preds, hyperparameters)
 
 # This implements Kelly Criterion
-combined_position_kelly <- lgbm_get_positions_based_on_kelly(df_with_features, df_with_features_test, y_preds, hyperparameters)
-combined_position_min_var <- lgbm_get_positions_based_on_wmv(df_with_features, df_with_features_test, y_preds, hyperparameters)
-combined_position_mkt <- lgbm_get_positions_based_on_wmkt(df_with_features, df_with_features_test, y_preds, hyperparameters)
+combined_position_kelly <- lgbm_get_positions_based_on_kelly(df_with_features_filtered, df_with_features_test_filtered, y_preds, hyperparameters)
+combined_position_min_var <- lgbm_get_positions_based_on_wmv(df_with_features_filtered, df_with_features_test_filtered, y_preds, hyperparameters)
+combined_position_mkt <- lgbm_get_positions_based_on_wmkt(df_with_features_filtered, df_with_features_test_filtered, y_preds, hyperparameters)
 
 dev.off()
-wealth_and_pnl <- get_pnl_based_on_position(df_with_features, df_with_features_test, combined_position)
+wealth_and_pnl <- get_pnl_based_on_position(df_with_features_filtered, df_with_features_test_filtered, combined_position)
 
 performance_evaluation_of_wealth(wealth_and_pnl$wealth, wealth_and_pnl$daily_pnl, 0.03)
 

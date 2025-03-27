@@ -118,6 +118,16 @@ add_vwap <- function(df, window_size){
 }
 
 
+add_dollar_volume <- function(df){
+  df_with_dollar_vol <- df %>%
+    group_by(symbol) %>%
+    arrange(date) %>%
+    mutate(dollar_volume = close * volume) %>%
+    ungroup() %>%
+    arrange(symbol, date)
+  return(df_with_dollar_vol)
+}
+
 add_avg_dollar_volume <- function(df, window_size){
   df_with_dollar_vol <- df %>%
     group_by(symbol) %>%
@@ -476,6 +486,7 @@ add_features <- function(df,
     add_gap_features() %>%
     # Add volume related features
     add_vwap(vwap_window_size) %>%
+    add_dollar_volume() %>%
     add_avg_dollar_volume(avg_dollar_volume_window_size) %>%
     add_relative_volume(relative_volume_window_size) %>%
     add_volume_shock() %>%

@@ -30,10 +30,15 @@ response_var <- 'simple_returns_fwd_day_5'
 covariate_vars <- setdiff(colnames(df_with_features), c(response_vars, 'date', 'symbol', colnames(df_with_features %>% dplyr::select(matches("bwd")))))
 categorical_vars <- c('quarter', 'month_of_year', 'day_of_week')
 
+hyperparameters <- training_log[1, ]
+
 bunch(train_length, valid_length, lookahead, num_leaves,
       min_data_in_leaf, learning_rate, feature_fraction,
-      bagging_fraction, num_iterations) %=% training_log[1, 1:9]
+      bagging_fraction, num_iterations, number_stocks_chosen) %=% hyperparameters[1:10]
 
+
+df_with_features_getting_symbols <- df_with_features[df_with_features$date < as.Date('2013-01-01'), ]
+bottom_liquid_covariates <- unique(get_bottom_n_liquid_assets(df_with_features_getting_symbols, hyperparameters[10]$number_stocks_chosen)$symbol)
 
 best_lgbm_params = list(
   objective = 'regression',
@@ -90,7 +95,7 @@ best_lgbm_params = list(
 create_list_df_format <- function(data_preprocessed, response_var){
   df_list <- split(data_preprocessed, data_preprocessed$date)
   df_list <- lapply(df_list, function(sub_df){
-    tmp <- matrix(NA, 100, length(colnames(data_preprocessed)) - 2)
+    tmp <- matrix(NA, length(unique(data_preprocessed$symbol)), length(colnames(data_preprocessed)) - 2)
     rownames(tmp) <- sub_df$symbol
     colnames(tmp) <- colnames(sub_df)[-c(1, 2)]
     tmp[sub_df$symbol, ] <- as.matrix(sub_df[, -c(1, 2)])
@@ -111,9 +116,8 @@ update_positions_and_get_trades <- function(positions, lookahead, preds){
   position_to_close <- positions[lookahead, ]
   
   positions[2:lookahead, ] <- positions[1:(lookahead-1), ]
-  
   is_short <- rank(preds) <= 5
-  is_long <- rank(preds) > 95
+  is_long <- rank(preds) > length(colnames(positions)) - 5
   positions[1, ] <- 0
   positions[1, is_short] <- -1/200
   positions[1, is_long] <- 1/200
@@ -128,22 +132,24 @@ update_positions_and_get_trades <- function(positions, lookahead, preds){
 
 # Input has to be all data in the training set.
 # External variables - 
-  # train_length, lookahead
+  # train_length, lookahead, bottom_liquid_covariates
   # These are obtained from HYPERPARAMETERS sections above.
 initialise_state <- function(data){
   
   unique_dates <- sort(as.Date(unique(data$date)))
   dates_recent <- tail(unique_dates, train_length + lookahead)
+  
+  data <- get_filtered_given_symbols(data, bottom_liquid_covariates)
 
   #Get recent most recent length(lookahead+train_length) dates 
   data <- data[data$date %in% dates_recent, ]
-  data_preprocessed <- as.data.frame(add_features(data, dV_kalman = 10, dW_kalman = 0.0001))
   
+  data_preprocessed <- as.data.frame(add_features(data, dV_kalman = 10, dW_kalman = 0.0001))
   # Pre-processing df to get it into list format.
   df_list <- create_list_df_format(data_preprocessed, 'simple_returns_fwd_day_5')
    
   # Creating positions matrix.
-  positions <- matrix(0, lookahead, 100)
+  positions <- matrix(0, lookahead, length(unique(data_preprocessed$symbol)))
   colnames(positions) <- rownames(df_list[[1]])
   
   
@@ -160,11 +166,11 @@ initialise_state <- function(data){
 
 # Input has to be the most 
 # External variables - 
-  # train_length, lookahead, covariate_vars, categorical_vars, best_lgbm_params, response_var
+  # train_length, lookahead, covariate_vars, categorical_vars, best_lgbm_params, response_var, bottom_liquid_covariates
   # These are obtained from HYPERPARAMETERS sections above.
 trading_algorithm <- function(new_data, state){
   bunch(day_idx, positions, df_recent, model, data) %=% state
-  
+  new_data <- get_filtered_given_symbols(new_data, bottom_liquid_covariates)
   new_unique_date <- sort(as.Date(unique(new_data$date)))
   # Add last value to df
   data_with_new_data <- rbind(data, new_data) %>% arrange(symbol, date)
@@ -179,7 +185,7 @@ trading_algorithm <- function(new_data, state){
   
   df_recent[[1]] <- NULL
   #Convert new data to a matrix and append it to df_recent
-  tmp <- matrix(NA, 100, length(colnames(new_data_with_features)) - 2)
+  tmp <- matrix(NA, length(unique(new_data_with_features$symbol)), length(colnames(new_data_with_features)) - 2)
   rownames(tmp) <- rownames(tail(df_recent, 1)[[1]])
   colnames(tmp) <- colnames(tail(df_recent, 1)[[1]])
   tmp[new_data_with_features$symbol, ] <- as.matrix(new_data_with_features[, -c(1,2)])
@@ -195,7 +201,7 @@ trading_algorithm <- function(new_data, state){
     dtrain <- lgb.Dataset(data=train_mx[, covariate_vars], 
                           label=train_mx[, 'simple_returns_fwd_day_5'],
                           categorical_feature=categorical_vars)
-    model <- lgb.train(params = best_lgbm_params, data = dtrain, verbose=0)
+    model <- lgb.train(params = best_lgbm_params, data = dtrain, verbose=-1)
   }
   # Use model to predict
   preds <- predict(model, df_recent[[new_date]][, covariate_vars])
