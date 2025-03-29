@@ -27,7 +27,9 @@ df <- df %>% arrange(symbol, date)                # Order according to symbol th
 df_with_features <- as.data.frame(add_features(df, dV_kalman = 10, dW_kalman = 0.0001))
 response_vars <- colnames(df_with_features %>% dplyr::select(matches("fwd")))
 response_var <- 'simple_returns_fwd_day_5'
+
 covariate_vars <- setdiff(colnames(df_with_features), c(response_vars, 'date', 'symbol', colnames(df_with_features %>% dplyr::select(matches("bwd")))))
+# covariate_vars <- c("open", "high", "low", "close", "volume") USED TO TEST WITHOUT FEATURES
 categorical_vars <- c('quarter', 'month_of_year', 'day_of_week')
 
 hyperparameters <- training_log[1, ]
@@ -53,16 +55,23 @@ best_lgbm_params = list(
 # FEATURE ENGINEERING FUNCTIONS - PASTE IN ENTIREITY OF feature_engineering_functions.R below
 #####################################################################################################
 
-
+#####################################################################################################
+# HELPER FUNCTIONS FOR INITIALIZING HYPERPARAMETERS/GLOBAL VARIABLES
+#####################################################################################################
+get_named_vector_with_all_tickers <- function(df){
+  unique_symbols <- unique(df$symbol)
+  named_vector <- setNames(rep(0, length(unique_symbols)), unique_symbols)
+  return(named_vector)
+}
 
 ###################################################################################################################################
-# HYPERPARAMETERS - WE NEED TO MANUALLY TYPE AND UNCOMMENT BELOW WHILE SUBMITTING, BUT FOR NOW AUTO FROM training_log above.
+# HYPERPARAMETERS/GLOBAL - WE NEED TO MANUALLY TYPE AND UNCOMMENT BELOW WHILE SUBMITTING, BUT FOR NOW AUTO FROM training_log above.
 ###################################################################################################################################
 # column variable names from df we're going to use to train - NEED TO MANUALLY TYPE OUT
 # response_var ->
 # covariate_vars ->
 # categorical_vars -> c('quarter', 'month_of_year', 'day_of_week')
-# 
+named_vector_all_tickers -> get_named_vector_with_all_tickers(df)
 # 
 # # Time interval related hyperparams
 # train_length ->
@@ -87,7 +96,7 @@ best_lgbm_params = list(
 # )
 
 #####################################################################################################
-# HELPER FUNCTIONS - initialise_data
+# HELPER FUNCTIONS FOR WALK FORWARD BACKTESTING
 #####################################################################################################
 #-------------------------------------
 # initialise_state functions
@@ -104,7 +113,7 @@ create_list_df_format <- function(data_preprocessed, response_var){
   })
   
   for (i in 1:train_length){
-    df_list[[i]][, response_var] <- df_list[[i+5]][, response_var]
+    df_list[[i]][, response_var] <- df_list[[i+5]][, 'simple_returns_bwd_day_5']
   }
   return(df_list)
 }
@@ -114,14 +123,12 @@ create_list_df_format <- function(data_preprocessed, response_var){
 #-------------------------------------
 update_positions_and_get_trades <- function(positions, lookahead, preds){
   position_to_close <- positions[lookahead, ]
-  
   positions[2:lookahead, ] <- positions[1:(lookahead-1), ]
   is_short <- rank(preds) <= 5
   is_long <- rank(preds) > length(colnames(positions)) - 5
   positions[1, ] <- 0
   positions[1, is_short] <- -1/200
   positions[1, is_long] <- 1/200
-  
   trades <- positions[1, ] - position_to_close
   return(list(trades = trades, positions = positions))
 }
@@ -166,7 +173,7 @@ initialise_state <- function(data){
 
 # Input has to be the most 
 # External variables - 
-  # train_length, lookahead, covariate_vars, categorical_vars, best_lgbm_params, response_var, bottom_liquid_covariates
+  # train_length, lookahead, covariate_vars, categorical_vars, best_lgbm_params, response_var, bottom_liquid_covariates, named_vector_all_tickers
   # These are obtained from HYPERPARAMETERS sections above.
 trading_algorithm <- function(new_data, state){
   bunch(day_idx, positions, df_recent, model, data) %=% state
@@ -194,7 +201,6 @@ trading_algorithm <- function(new_data, state){
   # Update the future returns of the past variable
   df_recent[[train_length]][, 'simple_returns_fwd_day_5'] <- df_recent[[new_date]][, 'simple_returns_bwd_day_5']
   
-  
   # Retrain model if valid_length time has passed
   if (day_idx %% valid_length == 1){
     train_mx <- do.call(rbind, df_recent[1:train_length])
@@ -203,9 +209,9 @@ trading_algorithm <- function(new_data, state){
                           categorical_feature=categorical_vars)
     model <- lgb.train(params = best_lgbm_params, data = dtrain, verbose=-1)
   }
+  
   # Use model to predict
   preds <- predict(model, df_recent[[new_date]][, covariate_vars])
-  
   bunch(trades, positions) %=% update_positions_and_get_trades(positions, lookahead, preds)
   unique_recent_dates <- sort(as.Date(unique(data_with_new_data$date)))
   new_state <- list(day_idx=day_idx, 
@@ -215,8 +221,11 @@ trading_algorithm <- function(new_data, state){
                     # Get only the most recent data from df i.e. minus first value
                     data=data_with_new_data[data_with_new_data$date %in% tail(unique_recent_dates, 35), ])
   
+  #Expand trades (Needed for code to work if predicting < 100 assets)
+  trades_all_tickers <- named_vector_all_tickers
+  trades_all_tickers[names(trades)] <- trades
   
-  return(list(trades=trades, new_state=new_state))
+  return(list(trades=trades_all_tickers, new_state=new_state))
 }
 
 

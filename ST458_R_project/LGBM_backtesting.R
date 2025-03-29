@@ -127,7 +127,7 @@ df_with_residuals <- df %>%
 
 df_with_residuals[df_with_residuals$symbol == "ACTS" & df_with_residuals$date == as.Date("2011-01-11"), ] # check to see if works
 
-df_with_features <- add_features(df_with_residuals, dV_kalman = 10, dW_kalman = 0.0001)
+df_with_features <- add_features(df, dV_kalman = 10, dW_kalman = 0.0001)
 df_with_features <- as.data.frame(df_with_features)
 # df_with_features <- get_bottom_n_liquid_assets(df_with_features, 20)
 
@@ -141,6 +141,7 @@ tickers <- unique(df$symbol)
 
 response_vars <- colnames(df_with_features %>% dplyr::select(matches("fwd")))
 covariate_vars <- setdiff(colnames(df_with_features), c(response_vars, "date", "symbol")) # 'residual', 'residual_lag1', 'residual_lag2'
+# covariate_vars <- c("open", "high", "low", "close", "volume") # THIS LINE IS USED TO TEST WITH NO FEATURES
 # Deliberately leaking in data to see how it performs.
 # Note: We get 160% rate of return!
 
@@ -209,7 +210,7 @@ head(training_log)
 # Evaluation of LGBM with some plots
 ################################################################################
 
-lgbm_features_effects_plot(df_with_features_train, covariate_vars, training_log[1, ])
+lgbm_features_effects_plot(df_with_features_train, covariate_vars, categorical_vars, training_log[1, ])
 dev.off()
 lgbm_hyperparameters_marginal_effect_plot(training_log)
 
@@ -226,10 +227,8 @@ df_with_features_train_filtered <- get_filtered_given_symbols(df_with_features_t
 df_with_features_test_filtered <- get_filtered_given_symbols(df_with_features_test, bottom_liquid_covariates)
 
 y_preds <- lgbm_get_validation_set_predictions(df_with_features_filtered, df_with_features_test_filtered, covariate_vars, categorical_vars, hyperparameters)
-
 # This implements basic strategy of buy top 5 highest returns and short bottom 5 lowest returns
 combined_position <- lgbm_get_positions_based_on_predictions(df_with_features_filtered, df_with_features_test_filtered, y_preds, hyperparameters)
-
 # This implements Kelly Criterion
 combined_position_kelly <- lgbm_get_positions_based_on_kelly(df_with_features_filtered, df_with_features_test_filtered, y_preds, hyperparameters)
 combined_position_min_var <- lgbm_get_positions_based_on_wmv(df_with_features_filtered, df_with_features_test_filtered, y_preds, hyperparameters)

@@ -452,7 +452,7 @@ add_future_log_return <- function(df_with_log_returns, periods_ahead) {
 ##########################################################################################
 
 add_features <- function(df,
-                         # vwap_window_size=20,
+                         vwap_window_size=20,
                          avg_dollar_volume_window_size = 20,
                          relative_volume_window_size = 20,
                          rolling_std_log_returns_window_size = 20,

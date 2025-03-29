@@ -14,7 +14,7 @@ source('training_functions.R')
 
 
 # rank features according to importance in predicting future returns
-lgbm_features_effects_plot <- function(df_train, covariate_vars, hyperparameters){
+lgbm_features_effects_plot <- function(df_train, covariate_vars, categorical_vars, hyperparameters){
   bunch(train_length, valid_length, lookahead) %=% hyperparameters[1:3]
     
   response_var <- sprintf("simple_returns_fwd_day_%01d", hyperparameters$lookahead)
@@ -28,8 +28,10 @@ lgbm_features_effects_plot <- function(df_train, covariate_vars, hyperparameters
     bagging_fraction = hyperparameters$bagging_fraction
   )
    
-  dtrain <- lgb.Dataset(data = as.matrix(df_train[, covariate_vars]), label = df_train[, response_var])
-  model <- lgb.train(params = params, data = dtrain)
+  dtrain <- lgb.Dataset(data = as.matrix(df_train[, covariate_vars]), 
+                        label = df_train[, response_var],
+                        categorical_feature = categorical_vars)
+  model <- lgb.train(params = params, data = dtrain, verbose = -1)
   
   
   importance <- lgb.importance(model)
@@ -126,13 +128,12 @@ lgbm_get_positions_based_on_predictions <- function(df_all, df_test, y_preds, hy
     is_long <- rank(y_preds[i, ]) > length(colnames(y_preds)) - 5   
     position[i, ] <- 0                   
     position[i, is_short] <- -1/200      
-    position[i, is_long] <- 1/200        
-    
-    }
+    position[i, is_long] <- 1/200
+  }
   
   combined_position <- position
   for (i in 1:nrow(position)){
-    j = max(1, i- (lookahead - 1))
+    j = max(1, i - (lookahead - 1))
     combined_position[i,] <- colSums(position[j:i, , drop=FALSE])
   }
   

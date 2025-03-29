@@ -28,7 +28,8 @@ walk_forward <- function(strategy, initialiser, df_train, df_test){
       price <- new_data[, 'close']
       r1d <- price / price_lag1 - 1 # compute simple return
       daily_pnl[i] <- sum(positions * r1d) # compute daily PnL
-      positions <- positions * (1 + r1d) + trades # update position
+      # positions <- positions * (1 + r1d) + trades # update position NOTE: discrepancy found here.
+      positions <- positions + trades # update position NOTE: fixed version.
     }
     printPercentage(i, n_test_dates)
   }
