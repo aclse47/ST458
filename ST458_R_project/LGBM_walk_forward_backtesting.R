@@ -29,8 +29,9 @@ response_vars <- colnames(df_with_features %>% dplyr::select(matches("fwd")))
 response_var <- 'simple_returns_fwd_day_5'
 
 covariate_vars <- setdiff(colnames(df_with_features), c(response_vars, 'date', 'symbol', colnames(df_with_features %>% dplyr::select(matches("bwd")))))
-# covariate_vars <- c("open", "high", "low", "close", "volume") USED TO TEST WITHOUT FEATURES
+covariate_vars <- c("open", "high", "low", "close", "volume") # USED TO TEST WITHOUT FEATURES
 categorical_vars <- c('quarter', 'month_of_year', 'day_of_week')
+categorical_vars <- c()
 
 hyperparameters <- training_log[1, ]
 
@@ -71,7 +72,7 @@ get_named_vector_with_all_tickers <- function(df){
 # response_var ->
 # covariate_vars ->
 # categorical_vars -> c('quarter', 'month_of_year', 'day_of_week')
-named_vector_all_tickers -> get_named_vector_with_all_tickers(df)
+named_vector_all_tickers <- get_named_vector_with_all_tickers(df)
 # 
 # # Time interval related hyperparams
 # train_length ->

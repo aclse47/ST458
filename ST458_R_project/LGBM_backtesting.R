@@ -141,11 +141,12 @@ tickers <- unique(df$symbol)
 
 response_vars <- colnames(df_with_features %>% dplyr::select(matches("fwd")))
 covariate_vars <- setdiff(colnames(df_with_features), c(response_vars, "date", "symbol")) # 'residual', 'residual_lag1', 'residual_lag2'
-# covariate_vars <- c("open", "high", "low", "close", "volume") # THIS LINE IS USED TO TEST WITH NO FEATURES
+covariate_vars <- c("open", "high", "low", "close", "volume") # THIS LINE IS USED TO TEST WITH NO FEATURES
 # Deliberately leaking in data to see how it performs.
 # Note: We get 160% rate of return!
 
 categorical_vars <- c("month_of_year", "day_of_week") # quarter
+categorical_vars <- c()
 
 df_with_features_train <- df_with_features[df_with_features$date < as.Date("2013-01-01"), ]
 df_with_features_test <- df_with_features[df_with_features$date >= as.Date("2013-01-01"), ]
