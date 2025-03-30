@@ -28,10 +28,11 @@ df_with_features <- as.data.frame(add_features(df, dV_kalman = 10, dW_kalman = 0
 response_vars <- colnames(df_with_features %>% dplyr::select(matches("fwd")))
 response_var <- 'simple_returns_fwd_day_5'
 
-covariate_vars <- setdiff(colnames(df_with_features), c(response_vars, 'date', 'symbol', colnames(df_with_features %>% dplyr::select(matches("bwd")))))
-covariate_vars <- c("open", "high", "low", "close", "volume") # USED TO TEST WITHOUT FEATURES
-categorical_vars <- c('quarter', 'month_of_year', 'day_of_week')
-categorical_vars <- c()
+covariate_vars <- setdiff(colnames(df_with_features), c(response_vars, "date", "symbol"))
+# covariate_vars <- c("open", "high", "low", "close", "volume", "month_of_year", "day_of_week", "simple_returns", "log_returns", "gap", "abs_gap", "VWAP", "dollar_volume", "volume_shock", "range", "kalman_filtered_close_dV_10_dW_1e-04") # THIS LINE IS USED TO TEST WITH NO FEATURES
+
+categorical_vars <- c('month_of_year', 'day_of_week', 'is_month_start', 'is_month_end')
+#categorical_vars <- c()
 
 hyperparameters <- training_log[1, ]
 
@@ -220,7 +221,7 @@ trading_algorithm <- function(new_data, state){
                     df_recent=df_recent, 
                     model=model, 
                     # Get only the most recent data from df i.e. minus first value
-                    data=data_with_new_data[data_with_new_data$date %in% tail(unique_recent_dates, 35), ])
+                    data=data_with_new_data[data_with_new_data$date %in% tail(unique_recent_dates, 252), ])
   
   #Expand trades (Needed for code to work if predicting < 100 assets)
   trades_all_tickers <- named_vector_all_tickers
