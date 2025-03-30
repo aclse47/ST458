@@ -10,10 +10,12 @@ library(zoo)
 # might need to adjust for what we choose rf to be
 # make sure trading algo stores daily returns based on changes in wealth, then used these to daily returns as input for calculate_metrics(): 
 
-calculate_metrics <- function(returns, dates, risk_free_rate = 0.02/250) {
+
+calculate_metrics <- function(wealth, dates, risk_free_rate = 0.02/250) {
+  returns <- c(0, diff(wealth) / head(wealth, -1))
   returns_xts <- xts(returns, order.by = as.Date(dates))
   
-  sharpe <- SharpeRatio(returns_xts, Rf = risk_free_rate, FUN = "StdDev")["AnnualizedSharpe",]
+  sharpe <- SharpeRatio(returns_xts, Rf = risk_free_rate, FUN = "StdDev")
   sortino <- SortinoRatio(returns_xts, MAR = risk_free_rate)
   max_drawdown <- maxDrawdown(returns_xts)
   expected_shortfall <- ES(returns_xts, p = 0.95, method = "historical")

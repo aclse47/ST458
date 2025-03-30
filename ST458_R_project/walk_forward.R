@@ -70,3 +70,6 @@ wealth_seq <- walk_forward(trading_algorithm, initialise_state, df_train, df_tes
 # Print log final wealth
 println('log wealth = ', log(tail(wealth_seq, 1)))
 
+# Get custom metrics
+source('evaluation_metrics.R')
+calculate_metrics(wealth_seq, sort(unique(df$date[!train_idx])))
