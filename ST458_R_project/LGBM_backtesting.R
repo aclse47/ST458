@@ -37,7 +37,7 @@ tickers <- unique(df$symbol)
 ################################################################################
 
 response_vars <- colnames(df_with_features %>% dplyr::select(matches("fwd")))
-covariate_vars <- setdiff(colnames(df_with_features), c(response_vars, "date", "symbol")) # 'residual', 'residual_lag1', 'residual_lag2'
+covariate_vars <- setdiff(colnames(df_with_features), c(response_vars, "date", "symbol")) 
 # covariate_vars <- c("open", "high", "low", "close", "volume", "month_of_year", "day_of_week", "simple_returns", "log_returns", "gap", "abs_gap", "VWAP", "dollar_volume", "volume_shock", "range", "kalman_filtered_close_dV_10_dW_1e-04") # THIS LINE IS USED TO TEST WITH NO FEATURES
 # Deliberately leaking in data to see how it performs.
 # Note: We get 160% rate of return!
@@ -99,7 +99,7 @@ wealth_and_pnl <- get_pnl_based_on_position(df_with_features_filtered, df_with_f
 
 dev.off()
 performance_evaluation_of_wealth(wealth_and_pnl$wealth, wealth_and_pnl$daily_pnl, 0.03)
-calculate_metrics(as.numeric(wealth_and_pnl$wealth), index(wealth_and_pnl$wealth), risk_free_rate = 0.03/250)
+calculate_metrics(as.numeric(wealth_and_pnl$wealth), index(wealth_and_pnl$wealth), risk_free_rate_annual = 0.03)
 
 # Pruning Features:
 # checking for highly correlated features (to remove redundant ones)

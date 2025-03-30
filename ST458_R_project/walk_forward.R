@@ -72,4 +72,6 @@ println('log wealth = ', log(tail(wealth_seq, 1)))
 
 # Get custom metrics
 source('evaluation_metrics.R')
-calculate_metrics(wealth_seq, sort(unique(df$date[!train_idx])))
+dates <- sort(unique(df$date[!train_idx]))
+dates <- tail(dates, length(wealth_seq))  # align dates
+calculate_metrics(wealth_seq, dates)

@@ -5,35 +5,35 @@ library(quantmod)
 library(tidyverse)
 library(zoo)
 
-# using 250 as trading days 
-# only added evaluation metrics that dont rely on benchmark data (besides a rf rate)
+# using 252 as trading days 
 # might need to adjust for what we choose rf to be
 # make sure trading algo stores daily returns based on changes in wealth, then used these to daily returns as input for calculate_metrics(): 
 
 
-calculate_metrics <- function(wealth, dates, risk_free_rate = 0.02/250) {
-  returns <- c(0, diff(wealth) / head(wealth, -1))
-  returns_xts <- xts(returns, order.by = as.Date(dates))
+calculate_metrics <- function(wealth, dates, risk_free_rate_annual = 0.03) { # rf rate set as daily 
+  returns <- c(0, diff(wealth) / head(wealth, -1)) # daily returns 
+  returns_xts <- xts(returns, order.by = as.Date(dates)) 
+  annual_return <- mean(returns, na.rm = TRUE) * 252
+  rf_daily <- risk_free_rate_annual / 252
   
-  sharpe <- SharpeRatio(returns_xts, Rf = risk_free_rate, FUN = "StdDev")
-  sortino <- SortinoRatio(returns_xts, MAR = risk_free_rate)
+  sharpe <- SharpeRatio(returns_xts, Rf = rf_daily, FUN = "StdDev", annualize = TRUE)
+  sortino <- SortinoRatio(returns_xts, MAR = rf_daily, annualize = TRUE)
   max_drawdown <- maxDrawdown(returns_xts)
   expected_shortfall <- ES(returns_xts, p = 0.95, method = "historical")
   
-  excess_returns <- returns - risk_free_rate
-  rf_adjusted_sharpe <- mean(excess_returns, na.rm = TRUE) / sd(excess_returns, na.rm = TRUE)
+  daily_excess_returns <- returns - rf_daily
+  annual_excess_return <- mean(daily_excess_returns, na.rm = TRUE) * 252
+  annual_excess_sd <- sd(daily_excess_returns, na.rm = TRUE) * sqrt(252)
+  rf_adjusted_sharpe <- annual_excess_return / annual_excess_sd
   
-  annual_return <- mean(returns, na.rm = TRUE) * 250
   calmar <- ifelse(is.na(max_drawdown), NA, annual_return / abs(max_drawdown))
-  
-  omega <- Omega(returns_xts, threshold = 0)
-  
+  omega <- as.numeric(Omega(returns_xts, threshold = rf_daily))
   ulcer <- sqrt(mean((cummax(returns) - returns)^2, na.rm = TRUE))
   
   metrics_df <- data.frame(
-    Sharpe_Ratio = sharpe,
+    Sharpe_Ratio = as.numeric(sharpe),
     RF_Adjusted_Sharpe = rf_adjusted_sharpe,
-    Sortino_Ratio = sortino,
+    Sortino_Ratio = as.numeric(sortino),
     Maximum_Drawdown = max_drawdown,
     Expected_Shortfall = expected_shortfall,
     Calmar_Ratio = calmar,
@@ -41,14 +41,9 @@ calculate_metrics <- function(wealth, dates, risk_free_rate = 0.02/250) {
     Ulcer_Index = ulcer
   )
   
+  rownames(metrics_df) <- NULL
   return(metrics_df)
 }
-
-# example use:
-# dates <- seq(as.Date("2010-01-04"), by = "day", length.out = length(wealth_values) - 1) 
-# returns <- diff(log(wealth_values))  # Log returns from wealth
-# metrics <- calculate_metrics(returns, dates)
-
 
 # 1. Sharpe Ratio  
 # Measures return per unit of risk (volatility).  

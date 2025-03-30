@@ -456,10 +456,10 @@ add_features <- function(df,
                          avg_dollar_volume_window_size = 20,
                          relative_volume_window_size = 20,
                          rolling_std_log_returns_window_size = 20,
-                         # exp_weighted_moving_avg_vol_window_size=20,
+                         exp_weighted_moving_avg_vol_window_size=20,
                          average_true_range_window_size = 14,
                          relative_strength_index_window_size = 14,
-                         #   moving_average_convergence_divergence_window_size_fast=12,
+                        #    moving_average_convergence_divergence_window_size_fast=12,
                          #   moving_average_convergence_divergence_window_size_slow=26,
                          #   moving_average_convergence_divergence_window_size_signal=9,
                          rate_of_change_window_size = 14,
@@ -495,14 +495,14 @@ add_features <- function(df,
     add_volume_shock() %>%
     # Add volatility measures
     add_rolling_std_log_returns(rolling_std_log_returns_window_size) %>%
-    # add_exp_weighted_moving_avg_vol(exp_weighted_moving_avg_vol_window_size) %>%
+    add_exp_weighted_moving_avg_vol(exp_weighted_moving_avg_vol_window_size) %>%
     add_avg_true_range_vol(average_true_range_window_size) %>%
     add_range_vol() %>%
     # Add momentum measures
     add_relative_strength_index(relative_strength_index_window_size) %>%
-    #   add_moving_average_convergence_divergence(moving_average_convergence_divergence_window_size_fast,
-    #              moving_average_convergence_divergence_window_size_slow,
-    #              moving_average_convergence_divergence_window_size_signal) %>%
+   # add_moving_average_convergence_divergence(moving_average_convergence_divergence_window_size_fast,
+   #               moving_average_convergence_divergence_window_size_slow,
+   #               moving_average_convergence_divergence_window_size_signal) %>%
     # add_momentum_ROC_log_acceleration(rate_of_change_window_size) %>%
     # Add trend-based measures
     # add_bollinger_bands(bb_window_size, bb_std) %>%
@@ -520,8 +520,8 @@ add_features <- function(df,
     add_volatility_x_momentum() %>%
     add_volatility_x_rsi() %>%
     add_return_prev_vol() %>%
-    #   add_range_rsi() %>%
-    #   add_macd_rsi() %>%
+    add_range_rsi() %>%
+    add_macd_rsi() %>%
     # Add targets
     add_future_simple_return(prediction_period_1) %>%
     add_future_log_return(prediction_period_1) %>%
