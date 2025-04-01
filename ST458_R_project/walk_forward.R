@@ -44,7 +44,10 @@ walk_forward <- function(strategy, initialiser, df_train, df_test){
   }
   
   # Plot wealth evolution
-  plot(wealth_seq, type='l')
+  plot(wealth_seq, type='l',
+       main="Wealth over time",
+       xlab = "Trading days over 2013",
+       ylab = "Wealth Value")
   
   return(wealth_seq)
 }
@@ -74,4 +77,4 @@ println('log wealth = ', log(tail(wealth_seq, 1)))
 source('evaluation_metrics.R')
 dates <- sort(unique(df$date[!train_idx]))
 dates <- tail(dates, length(wealth_seq))  # align dates
-calculate_metrics(wealth_seq, dates)
+calculate_metrics(wealth_seq, dates, risk_free_rate_annual = 0.03)
