@@ -97,7 +97,6 @@ combined_position_mkt <- lgbm_get_positions_based_on_wmkt(df_with_features_filte
 
 wealth_and_pnl <- get_pnl_based_on_position(df_with_features_filtered, df_with_features_test_filtered, combined_position)
 
-dev.off()
 performance_evaluation_of_wealth(wealth_and_pnl$wealth, wealth_and_pnl$daily_pnl, 0.03)
 calculate_metrics(as.numeric(wealth_and_pnl$wealth), index(wealth_and_pnl$wealth), risk_free_rate_annual = 0.03)
 
