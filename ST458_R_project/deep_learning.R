@@ -1,5 +1,3 @@
-# using NN to predict stock returns 
-
 library(putils)
 library(keras3)
 library(tensorflow)
@@ -11,6 +9,11 @@ source("feature_engineering.R")
 source("model_evaluation_functions.R")
 
 use_python("/opt/anaconda3/envs/r-tensorflow/bin/python", required = TRUE)
+
+################################################################################
+# using NN to predict stock returns 
+################################################################################
+# param grid search 
 
 df <- read.csv("df_train.csv")
 df <- add_features(df)  
@@ -126,8 +129,7 @@ for (i in 1:num_param_comb){
     scale_sd <- attr(x_train, 'scaled:scale')
     x_valid <- scale(x_valid, scale_mean, scale_sd)
     
-    params <- training_log[i, c("learning_rate", "num_layers", "hidden_width", 
-                                "activation", "dropout_rate", "epochs", "batch_size")]
+    params <- training_log[i, c("learning_rate", "num_layers", "hidden_width", "activation", "dropout_rate", "epochs", "batch_size")]
     
     model <- nn_train(x_train, y_train, x_valid, y_valid, params, verbose = 0)
     preds <- predict(model, x_valid, verbose=0)
@@ -138,138 +140,77 @@ for (i in 1:num_param_comb){
   training_log$ic[i] <- mean(ic_by_day)
   print(paste("Completed iteration", i, "of", num_param_comb))
   printPercentage(i, num_param_comb)
-}
+} # takes ~1 hr to run
 
 training_log <- sort_data_frame(training_log, 'ic', decreasing=T)
-print(training_log)
+print(training_log) 
 i_opt <- which.max(training_log$ic) 
 print(training_log$ic) 
-# now we have these as the best param combos:
-#      train_length valid_length lookahead learning_rate num_layers hidden_width activation dropout_rate epochs batch_size            ic
-#        252           63        21          0.01          2           10       relu    0.3795131      5         32  0.9550920616
-#         252           21        21          0.03          2           10    sigmoid    0.2722721      5         32  0.8891083394
-# will train models with those params definined
 
-lookahead <- 21
-train_length <- 252
-valid_length <- 63
-response_var <- sprintf("simple_returns_fwd_day_%d", lookahead)
+# 0.043636878 - lower than LGBM
 
-all_dates <- sort(unique(df$date))
-test_dates <- all_dates[all_dates >= as.Date("2013-01-01")]
-symbols <- unique(df$symbol)
+################################################################################
+# Fixed architecture of 5 dense layers
+################################################################################
+# first experimentation (static train/test split, fixed architecture, fixed params)
 
-# matrix output
-y_pred <- matrix(NA, nrow = length(test_dates), ncol = length(symbols),
-                 dimnames = list(as.character(test_dates), symbols))
+df <- read.csv("df_train.csv")
+df$date <- as.Date(df$date, format = "%Y-%m-%d")
+df <- df %>% arrange(symbol, date)
 
-model <- NULL
-model_trained <- FALSE
-scale_mean <- scale_sd <- NULL
+df_with_features <- add_features(df)
+df_with_features <- as.data.frame(df_with_features)
+df_with_features <- df_with_features %>%
+  mutate(across(everything(), ~ ifelse(is.na(.), mean(., na.rm = TRUE), .))) # replacing NAs with column mean
 
-for (i in seq_along(test_dates)) {
-  date <- test_dates[i]
-  
-  # retrain model every 'valid_length' days
-  if ((i - 1) %% valid_length == 0) {
-    date_idx <- match(date, all_dates)
-    date_idx_end <- date_idx - lookahead
-    date_idx_start <- date_idx_end - train_length + 1
-    
-    if (date_idx_start < 1 || date_idx_end < 1) next  # not enough history
-    
-    train_dates <- all_dates[date_idx_start:date_idx_end]
-    train_filter <- df$date %in% train_dates
-    
-    x_train_raw <- as.matrix(df[train_filter, covariates])
-    y_train_raw <- df[train_filter, response_var]
-    
-    # scale data
-    x_train <- scale(x_train_raw)
-    scale_mean <- attr(x_train, 'scaled:center')
-    scale_sd <- attr(x_train, 'scaled:scale')
-    
-    # train/val split
-    n <- nrow(x_train)
-    split_point <- floor(0.8 * n)
-    x_train_split <- x_train[1:split_point, ]
-    y_train_split <- y_train_raw[1:split_point]
-    x_valid_split <- x_train[(split_point + 1):n, ]
-    y_valid_split <- y_train_raw[(split_point + 1):n]
-    
-    # train
-    model <- nn_train(
-      x_train_split, y_train_split,
-      x_valid_split, y_valid_split,
-      params = list(
-        lr = 0.01,
-        num_layers = 2,
-        width = 10,
-        activation = 'relu',
-        dropout_rate = 0.3795131,
-        epochs = 5,
-        batch_size = 32
-      ),
-      verbose = 0
-    )
-    
-    model_trained <- TRUE
-  }
-  
-  # predict for current day
-  if (model_trained) {
-    test_filter <- df$date == date
-    if (sum(test_filter) == 0) next
-    
-    x_test <- as.matrix(df[test_filter, covariates])
-    x_test <- scale(x_test, scale_mean, scale_sd)
-    
-    preds <- as.vector(predict(model, x_test, verbose = 0))
-    syms <- df$symbol[test_filter]
-    
-    y_pred[as.character(date), syms] <- preds
-  }
-  
-  printPercentage(date, test_dates)
-}
-# took 5 mins to run
+train_length <- 126
+valid_length <- 21
 
-for (i in 1:(nrow(y_pred))){
-  rk <- rank(y_pred[i, ], ties.method='random') 
-  is_short <- rk <= 5 # short the top 5 (lowest predicted returns)
-  is_long <- rk > 45 # long the bottom 5 (highest predicted returns)
-  
-  position[i, ] <- 0
-  position[i, is_short] <- -1/200
-  position[i, is_long] <- 1/200
-}
+unique_dates <- sort(unique(df$date))
+train_idx <- which(df$date >= unique_dates[1] & df$date <= unique_dates[train_length])
+valid_idx <- which(df$date >= unique_dates[train_length + 1] & df$date <= unique_dates[train_length + valid_length])
 
-combined_position <- position
-for (i in 1:nrow(position)){
-  j <- max(1, i-20)
-  combined_position[i,] <- colSums(position[j:i, , drop=FALSE])
-}
+response_vars <- df_with_features %>% dplyr::select(contains("fwd")) %>% colnames()
+response_var <- response_vars[1]  # first forward return 
 
-scaling_factor <- pmax(1, rowSums(abs(combined_position)))
-valid_rows <- rowSums(!is.na(combined_position)) > 0
-combined_position <- combined_position[valid_rows, ]
-r_fwd <- r_fwd[valid_rows, ]
+covariate_vars <- setdiff(colnames(df_with_features), c(response_vars, 'date', 'symbol'))
 
-daily_pnl <- rowSums(r_fwd * combined_position)
-log_wealth <- cumsum(log(1 + daily_pnl))
-wealth <- exp(log_wealth)
+# scaling
+X_train <- scale(as.matrix(df_with_features[train_idx, covariate_vars, drop = FALSE]))
+X_valid <- scale(as.matrix(df_with_features[valid_idx, covariate_vars, drop = FALSE]), 
+                 center = attr(X_train, "scaled:center"), 
+                 scale = attr(X_train, "scaled:scale"))
 
-performance_evaluation_of_wealth(wealth, daily_pnl, 0.03)
-actual_returns <- r_fwd  # # SR = 5.355554
-ic_test <- cor(as.vector(y_pred), as.vector(actual_returns), method = "spearman", use = "complete.obs")
-ic_test 
-# 0.08203199
+y_train <- df_with_features[train_idx, response_var]
+y_valid <- df_with_features[valid_idx, response_var]
 
-# stops early because strategy stops making predictions since it only makes predictions on days that the model is trained 
+first <- layer_dense(units = 128, activation = 'relu', input_shape = c(ncol(X_train)))
+second <- layer_dropout(rate = 0.3)
+third <- layer_dense(units = 64, activation = 'relu', kernel_regularizer = regularizer_l2(0.01))
+fourth <- layer_dropout(rate = 0.3) 
+fifth <-   layer_dense(units = 32, activation = 'relu') 
+output_layer <- layer_dense(units = 1)
 
+model <- keras_model_sequential()
 
-# Second Best Param combo:  
-#      train_length valid_length lookahead learning_rate num_layers hidden_width activation dropout_rate epochs batch_size            ic
-#         252           21        21          0.03          2           10    sigmoid    0.2722721      5         32  0.8891083394
+model %>% 
+  first %>% 
+  second %>% 
+  third %>% 
+  fourth %>% 
+  fifth %>% 
+  output_layer
 
+model$compile(optimizer = optimizer_adam(learning_rate = 0.0005), loss = 'mean_squared_error')
 
+early_stop <- callback_early_stopping(
+  monitor = "val_loss", 
+  patience = 10, 
+  restore_best_weights = TRUE  
+)
+
+fit(model, X_train, y_train, epochs=27, batch_size=32, validation_data = list(X_valid, y_valid),  callbacks = list(early_stop) )
+
+y_pred <- predict(model, X_valid)
+ic_in_fold <- cor(y_pred, y_valid, method = "spearman")  
+print(ic_in_fold) # 0.0020 - lower than LGBM 
