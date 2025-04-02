@@ -629,11 +629,11 @@ create_list_df_format <- function(data_preprocessed, response_var){
 update_positions_and_get_trades <- function(positions, lookahead, preds){
   position_to_close <- positions[lookahead, ]
   positions[2:lookahead, ] <- positions[1:(lookahead-1), ]
-  is_short <- rank(preds) <= 5
-  is_long <- rank(preds) > length(colnames(positions)) - 5
+  is_short <- rank(preds) <= 1
+  is_long <- rank(preds) > length(colnames(positions)) - 1 
   positions[1, ] <- 0
-  positions[1, is_short] <- -1/200
-  positions[1, is_long] <- 1/200
+  positions[1, is_short] <- -0.025
+  positions[1, is_long] <- 0.025
   trades <- positions[1, ] - position_to_close
   return(list(trades = trades, positions = positions))
 }

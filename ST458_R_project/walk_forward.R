@@ -64,7 +64,7 @@ df_train <- df[train_idx, ]
 df_test <- df[!train_idx, ]
 
 # Load strategy functions
-script_name <- 'Group2.R'
+script_name <- 'GroupB.R'
 source(script_name)
 
 # Run backtest
