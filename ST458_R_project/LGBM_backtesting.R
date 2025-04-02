@@ -100,37 +100,86 @@ wealth_and_pnl <- get_pnl_based_on_position(df_with_features_filtered, df_with_f
 performance_evaluation_of_wealth(wealth_and_pnl$wealth, wealth_and_pnl$daily_pnl, 0.03)
 calculate_metrics(as.numeric(wealth_and_pnl$wealth), index(wealth_and_pnl$wealth), risk_free_rate_annual = 0.03)
 
-# Pruning Features:
-# checking for highly correlated features (to remove redundant ones)
-numeric_covariates <- df_with_features %>%
-  dplyr::select(all_of(covariate_vars)) %>%
-  dplyr::select(where(is.numeric))
-cor_matrix <- cor(numeric_covariates, use = "pairwise.complete.obs")
-heatmap(cor_matrix, symm = TRUE)
+# # Pruning Features:
+# # checking for highly correlated features (to remove redundant ones)
+# numeric_covariates <- df_with_features %>%
+#   dplyr::select(all_of(covariate_vars)) %>%
+#   dplyr::select(where(is.numeric))
+# cor_matrix <- cor(numeric_covariates, use = "pairwise.complete.obs")
+# heatmap(cor_matrix, symm = TRUE)
+# 
+# get_highly_correlated_pairs <- function(cor_matrix, threshold = 0.95) {
+#   cor_pairs <- which(abs(cor_matrix) > threshold, arr.ind = TRUE)
+#   cor_pairs <- cor_pairs[cor_pairs[, 1] < cor_pairs[, 2], , drop = FALSE] # remove duplicates
+#   data.frame(
+#     feature_1 = rownames(cor_matrix)[cor_pairs[, 1]],
+#     feature_2 = colnames(cor_matrix)[cor_pairs[, 2]],
+#     correlation = cor_matrix[cor_pairs]
+#   )
+# }
+# 
+# redundant_pairs <- get_highly_correlated_pairs(cor_matrix, threshold = 0.95)
+# as.data.frame(redundant_pairs)
+# redundant_pairs <- redundant_pairs %>%
+#   arrange(desc(correlation))
+# print(redundant_pairs)
+# 
+# 
+# # least important features (function added to training_functions.R)
+# least_important <- extract_least_important_features(
+#   df = df_with_features_train,
+#   training_log = training_log,
+#   covariate_vars = covariate_vars,
+#   categorical_vars = categorical_vars,
+#   response_var = "simple_returns_fwd_day_5"
+# )
+# least_important
 
-get_highly_correlated_pairs <- function(cor_matrix, threshold = 0.95) {
-  cor_pairs <- which(abs(cor_matrix) > threshold, arr.ind = TRUE)
-  cor_pairs <- cor_pairs[cor_pairs[, 1] < cor_pairs[, 2], , drop = FALSE] # remove duplicates
-  data.frame(
-    feature_1 = rownames(cor_matrix)[cor_pairs[, 1]],
-    feature_2 = colnames(cor_matrix)[cor_pairs[, 2]],
-    correlation = cor_matrix[cor_pairs]
-  )
-}
-
-redundant_pairs <- get_highly_correlated_pairs(cor_matrix, threshold = 0.95)
-as.data.frame(redundant_pairs)
-redundant_pairs <- redundant_pairs %>%
-  arrange(desc(correlation))
-print(redundant_pairs)
 
 
-# least important features (function added to training_functions.R)
-least_important <- extract_least_important_features(
-  df = df_with_features_train,
-  training_log = training_log,
-  covariate_vars = covariate_vars,
-  categorical_vars = categorical_vars,
-  response_var = "simple_returns_fwd_day_5"
-)
-least_important
+
+
+
+#####################################################################################################
+# NO NEED FOR THE BELOW FUNCTION BECAUSE WE'RE MEANT TO USE walk_forward.R (Kept just in case)
+#####################################################################################################
+
+
+# mask_response <- function(data){
+#   response_vars <- colnames(data %>% dplyr::select(matches("fwd")))
+#   data[, response_vars] <- NA
+#   return(data)
+# }
+# walk_forward <- function(strategy, initialiser, df_train, df_test, df_with_features_test){
+#   state <- initialiser(mask_response(df_train))
+#   unique_test_dates <- sort(unique(df_test$date))
+#   n_test_dates <- length(unique_test_dates)
+#   position <- rep(0, 50)
+#   daily_pnl <- rep(0, n_test_dates)
+#   
+#   for (i in 1: n_test_dates){
+#     new_data <- df_test[df_test$date == unique_test_dates[i], ]
+#     new_data <- sort_data_frame(new_data, 'symbol')
+#     bunch(trades, state) %=% strategy(mask_response(new_data), state)
+#     position <- position + trades
+#     
+#     new_data_with_features <- df_with_features_test[df_with_features_test$date == unique_test_dates[i], ]
+#     new_data_with_features <- sort_data_frame(new_data_with_features, 'symbol')
+#     
+#     r1fwd <- new_data_with_features[, 'simple_returns_fwd_day_1']
+#     daily_pnl[i] <- log(1 + sum(position * r1fwd))
+#     printPercentage(i, n_test_dates)
+#   }
+#   # We should lag because trades are executed at the end of the day
+#   daily_pnl <- lag(daily_pnl)
+#   daily_pnl[1] <- 0
+#   
+#   wealth <- exp(cumsum(daily_pnl)) / 1
+#   
+#   return(list(wealth = wealth, daily_pnl = daily_pnl))
+# }
+# wealth_and_pnl <- walk_forward(trading_algorithm, initialise_state, df[df$date < as.Date('2013-01-01'), ], df[df$date >= as.Date('2013-01-01'), ], df_with_features[df_with_features$date >= as.Date('2013-01-01'), ])
+# performance_evaluation_of_wealth(wealth_and_pnl$wealth, wealth_and_pnl$daily_pnl, 0.03)
+
+
+
